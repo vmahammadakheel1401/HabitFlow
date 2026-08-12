@@ -21,7 +21,7 @@ async function startServer() {
   app.post("/api/ai/analyze", async (req, res) => {
     try {
       const { prompt } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || 'AQ.Ab8RN6KODQU6Ewj-AMi4htfofqr8SEcEp2kMSeVXJ69cwq_78w';
       if (!apiKey) {
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
       }
