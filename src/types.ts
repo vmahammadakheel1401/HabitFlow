@@ -49,8 +49,5 @@ export interface UserProfile {
   email: string;
   displayName: string;
   photoURL?: string;
-  isPremium?: boolean;
-  subscriptionPlan?: 'monthly' | 'yearly';
-  renewalDate?: string;
   hiddenCategoryIds?: string[];
 }

@@ -22,9 +22,6 @@ import { HabitForm } from '@/components/HabitForm';
 import { HabitDetail } from '@/components/HabitDetail';
 import { WeeklySummary } from '@/components/WeeklySummary';
 import { ChatView } from '@/components/ChatView';
-import { SubscriptionModal } from '@/components/SubscriptionModal';
-import { CheckoutModal } from '@/components/CheckoutModal';
-import { SuccessModal } from '@/components/SuccessModal';
 import { getTodayStr, cn } from '@/lib/utils';
 import { Plus, User as UserIcon, Bell, Moon, Database, Info, LogIn, LogOut, Trophy, Award, Zap, Brain, Heart, Activity, Crown, Star } from 'lucide-react';
 import { format, isSunday, startOfWeek, subDays } from 'date-fns';
@@ -40,13 +37,8 @@ export default function App() {
   const [showWeeklySummary, setShowWeeklySummary] = useState(false);
   const [skipFlash, setSkipFlash] = useState<string | null>(null);
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
-  const [showSubscription, setShowSubscription] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [showInsights, setShowInsights] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isPremium, setIsPremium] = useState(false);
   const [aiAdvice, setAiAdvice] = useState<Record<string, string>>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [customCategories, setCustomCategories] = useState<Category[]>([]);
@@ -83,14 +75,12 @@ export default function App() {
             if (docSnap.exists()) {
               const data = docSnap.data() as UserProfile;
               setUserProfile(data);
-              setIsPremium(data.isPremium || false);
             } else {
               const newProfile: UserProfile = {
                 uid: u.uid,
                 email: u.email || '',
                 displayName: u.displayName || 'Guest Explorer',
                 photoURL: u.photoURL || null,
-                isPremium: false,
               };
               setDoc(profileRef, newProfile).catch(e => console.error("Error creating profile:", e));
               setUserProfile(newProfile);
@@ -131,27 +121,6 @@ export default function App() {
     });
     return () => unsubscribeAuth();
   }, []);
-
-  const updatePremiumStatus = async (plan: 'monthly' | 'yearly') => {
-    if (!user) return;
-    try {
-      const renewalDate = plan === 'monthly' 
-        ? format(subDays(new Date(), -30), 'yyyy-MM-dd')
-        : format(subDays(new Date(), -365), 'yyyy-MM-dd');
-
-      const profileRef = doc(db, 'profiles', user.uid);
-      await updateDoc(profileRef, {
-        isPremium: true,
-        subscriptionPlan: plan,
-        renewalDate
-      });
-      setShowCheckout(false);
-      setShowSuccess(true);
-    } catch (err) {
-      console.error("Error updating premium status:", err);
-      setAppError("Subscription update failed. Please contact support.");
-    }
-  };
 
   const addCategory = async (name: string, color: string) => {
     if (!user) return;
@@ -324,7 +293,7 @@ export default function App() {
   };
 
   const deleteHabit = async (habitId: string) => {
-    if (!user || !confirm('Are you sure you want to permanently remove this habit?')) return;
+    if (!user || !habitId) return;
     try {
       await deleteDoc(doc(db, 'habits', habitId));
       setSelectedHabitId(null);
@@ -393,8 +362,13 @@ export default function App() {
 
   const dailyProgress = useMemo(() => {
     if (habits.length === 0) return 0;
-    const completedCount = logs.filter(l => l.date === today && (l.status === 'completed' || l.status === 'skipped')).length;
-    return Math.round((completedCount / habits.length) * 100);
+    const activeHabitIds = new Set(habits.map(h => h.id));
+    const completedCount = logs.filter(l => 
+      l.date === today && 
+      activeHabitIds.has(l.habitId) && 
+      (l.status === 'completed' || l.status === 'skipped')
+    ).length;
+    return Math.min(100, Math.round((completedCount / habits.length) * 100));
   }, [habits, logs, today]);
 
   const categoryStats = useMemo(() => {
@@ -538,8 +512,7 @@ export default function App() {
           <div className="flex justify-between items-center mb-1">
             <h1 className="text-[32px] font-semibold leading-tight tracking-[-0.5px]">Good morning</h1>
             
-            {isPremium ? (
-              <motion.button
+            <motion.button
                 onClick={() => setActiveTab('settings')}
                 animate={{ 
                   boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 20px rgba(251,191,36,0.4)", "0 0 0px rgba(251,191,36,0)"]
@@ -550,21 +523,9 @@ export default function App() {
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-400 to-amber-600 rounded-2xl shadow-lg border border-white/20 relative group"
               >
                 <Crown size={16} className="text-white fill-white/20" />
-                <span className="text-[10px] font-bold text-white uppercase tracking-widest">Pro User</span>
+                <span className="text-[10px] font-bold text-white uppercase tracking-widest">Free Pro Access</span>
                 <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
               </motion.button>
-            ) : (
-              <motion.button
-                onClick={() => setShowSubscription(true)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-4 py-2 bg-green-500 rounded-2xl shadow-lg shadow-green-500/20 border border-white/10 group"
-              >
-                <Zap size={16} className="text-white fill-white/20" />
-                <span className="text-[10px] font-bold text-white uppercase tracking-widest">Upgrade</span>
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
-              </motion.button>
-            )}
           </div>
           <p className="text-outline text-sm font-medium mb-6">{format(new Date(), 'EEEE, MMM d')}</p>
           
@@ -714,10 +675,7 @@ export default function App() {
           )}
 
           {activeTab === 'chat' && (
-            <ChatView 
-              onOpenSubscription={() => setShowSubscription(true)}
-              isPremium={isPremium}
-            />
+            <ChatView />
           )}
 
           {activeTab === 'settings' && (
@@ -750,47 +708,6 @@ export default function App() {
                     </button>
                   )}
                 </div>
-              </section>
-
-              {/* Billing & Subscription Section */}
-              <section className="bg-white rounded-2xl p-6 shadow-sm border border-black/5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Billing & Subscription</h3>
-                  {isPremium && (
-                    <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest">Active</span>
-                  )}
-                </div>
-
-                {isPremium ? (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center py-2 border-b border-black/5">
-                      <span className="text-sm font-medium text-gray-500">Current Plan</span>
-                      <span className="text-sm font-bold text-gray-900 uppercase">{userProfile?.subscriptionPlan}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-black/5">
-                      <span className="text-sm font-medium text-gray-500">Next Billing</span>
-                      <span className="text-sm font-bold text-gray-900">{userProfile?.renewalDate}</span>
-                    </div>
-                    <button 
-                      onClick={() => alert("Simulation: Cancellation flow initiated. Your features will remain active until the end of the billing period.")}
-                      className="w-full text-center text-xs font-bold text-red-500 hover:text-red-600 transition-colors pt-2"
-                    >
-                      Cancel Subscription
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      Upgrade to unlock AI Coach History, advanced performance insights, and custom habit strategies.
-                    </p>
-                    <button 
-                      onClick={() => setShowSubscription(true)}
-                      className="w-full bg-primary text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary/20"
-                    >
-                      Upgrade to Pro
-                    </button>
-                  </div>
-                )}
               </section>
             </div>
           )}
@@ -828,8 +745,6 @@ export default function App() {
           }}
           aiAdvice={aiAdvice[selectedHabit.id]}
           isAnalyzing={isAnalyzing}
-          isPremium={isPremium}
-          onOpenSubscription={() => setShowSubscription(true)}
         />
       )}
 
@@ -859,28 +774,6 @@ export default function App() {
           onDeleteCategory={deleteCategory}
         />
       )}
-
-      <SubscriptionModal 
-        isOpen={showSubscription}
-        onClose={() => setShowSubscription(false)}
-        onUpgrade={(plan) => {
-          setSelectedPlan(plan);
-          setShowSubscription(false);
-          setShowCheckout(true);
-        }}
-      />
-
-      <CheckoutModal 
-        isOpen={showCheckout}
-        onClose={() => setShowCheckout(false)}
-        plan={selectedPlan}
-        onSuccess={updatePremiumStatus}
-      />
-
-      <SuccessModal 
-        isOpen={showSuccess}
-        onClose={() => setShowSuccess(false)}
-      />
 
       <AnimatePresence>
         {showInsights && (

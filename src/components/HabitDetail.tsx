@@ -14,8 +14,6 @@ interface HabitDetailProps {
   onEdit: () => void;
   aiAdvice?: string;
   isAnalyzing?: boolean;
-  isPremium?: boolean;
-  onOpenSubscription?: () => void;
 }
 
 export function HabitDetail({ 
@@ -28,8 +26,6 @@ export function HabitDetail({
   onEdit, 
   aiAdvice, 
   isAnalyzing,
-  isPremium,
-  onOpenSubscription
 }: HabitDetailProps) {
   const habitLogs = logs.filter(l => l.habitId === habit.id);
   const completionRate = Math.round((habitLogs.filter(l => l.status === 'completed' || l.status === 'skipped').length / 30) * 100) || 0;
@@ -116,19 +112,10 @@ export function HabitDetail({
             <h3 className="font-bold text-white">Coach Insights</h3>
           </div>
           <p className="text-white/80 text-sm leading-relaxed relative z-10">
-            {isPremium 
-              ? (aiAdvice || "Ready for your personal growth strategy? Let Gemini analyze your progress.")
-              : "Upgrade to Pro to unlock personalized growth strategies and habit analysis from your AI Coach."
-            }
+            {aiAdvice || "Ready for your personal growth strategy? Let Gemini analyze your progress."}
           </p>
           <button 
-            onClick={() => {
-              if (isPremium) {
-                onAnalyze();
-              } else {
-                onOpenSubscription?.();
-              }
-            }}
+            onClick={onAnalyze}
             disabled={isAnalyzing}
             className="w-full bg-accent text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-accent/20 transition-all active:scale-95 disabled:opacity-50 relative z-10"
           >

@@ -282,11 +282,7 @@ export function HabitForm({ onSave, onDelete, onCancel, initialData, categories,
             {initialData && onDelete && (
               <button
                 type="button"
-                onClick={() => {
-                  if (confirm('Are you sure you want to delete this habit?')) {
-                    onDelete(initialData.id);
-                  }
-                }}
+                onClick={() => onDelete(initialData.id)}
                 className="w-full bg-red-50 text-red-500 py-4 rounded-2xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-100 transition-all"
               >
                 <Trash2 size={18} />
