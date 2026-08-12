@@ -15,6 +15,8 @@ import { signInAnonymously, onAuthStateChanged, User, signInWithPopup, signOut }
 import { db, auth, googleProvider } from '@/lib/firebase';
 import { Habit, HabitLog, UserProfile, Frequency, HabitType, HabitCategory, TimeOfDay, Category } from '@/types';
 import { BottomNav } from '@/components/BottomNav';
+import { useRef } from 'react';
+import { SettingsView } from '@/components/SettingsView';
 import { HabitCard } from '@/components/HabitCard';
 import { StatsCard } from '@/components/StatsCard';
 import { CalendarView } from '@/components/CalendarView';
@@ -45,6 +47,150 @@ export default function App() {
   const [customCategories, setCustomCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [appError, setAppError] = useState<string | null>(null);
+
+  // Notification State & Management
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(
+    () => localStorage.getItem('notifications_enabled') === 'true'
+  );
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission | 'unsupported'>(
+    () => (typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported')
+  );
+  const sentNotificationsRef = useRef<Set<string>>(new Set());
+
+  // Initialize Accent Theme
+  useEffect(() => {
+    const savedAccent = localStorage.getItem('theme_accent_color');
+    if (savedAccent) {
+      document.documentElement.style.setProperty('--color-primary', savedAccent);
+    }
+  }, []);
+
+  const handleToggleNotifications = async (enabled: boolean) => {
+    if (!enabled) {
+      setNotificationsEnabled(false);
+      localStorage.setItem('notifications_enabled', 'false');
+      return;
+    }
+
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('Browser notifications are not supported by this browser.');
+      setPermissionStatus('unsupported');
+      return;
+    }
+
+    try {
+      const status = await Notification.requestPermission();
+      setPermissionStatus(status);
+      if (status === 'granted') {
+        setNotificationsEnabled(true);
+        localStorage.setItem('notifications_enabled', 'true');
+      } else {
+        setNotificationsEnabled(false);
+        localStorage.setItem('notifications_enabled', 'false');
+      }
+    } catch (err) {
+      console.error('Notification permission error:', err);
+    }
+  };
+
+  const sendBrowserNotification = (title: string, options?: NotificationOptions) => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification(title, {
+          icon: '/favicon.ico',
+          ...options,
+        });
+      } catch (err) {
+        console.error('Error triggering notification:', err);
+      }
+    }
+  };
+
+  const handleSendTestNotification = () => {
+    sendBrowserNotification('HabitFlow Notification Test', {
+      body: 'Notifications are active! Your scheduled habit reminders and Evening Streak Saver will alert you here.',
+    });
+  };
+
+  // Scheduled Reminders & Evening Streak Saver interval
+  useEffect(() => {
+    if (!notificationsEnabled || permissionStatus !== 'granted') return;
+
+    const checkSchedule = () => {
+      const now = new Date();
+
+      // Quiet Hours Suppression Check
+      const quietHoursEnabled = localStorage.getItem('quiet_hours_enabled') === 'true';
+      if (quietHoursEnabled) {
+        const quietStart = localStorage.getItem('quiet_hours_start') || '22:00';
+        const quietEnd = localStorage.getItem('quiet_hours_end') || '07:00';
+        const currMin = now.getHours() * 60 + now.getMinutes();
+        const [sH, sM] = quietStart.split(':').map(Number);
+        const startMin = sH * 60 + sM;
+        const [eH, eM] = quietEnd.split(':').map(Number);
+        const endMin = eH * 60 + eM;
+
+        let inQuiet = false;
+        if (startMin <= endMin) {
+          inQuiet = currMin >= startMin && currMin < endMin;
+        } else {
+          inQuiet = currMin >= startMin || currMin < endMin;
+        }
+
+        if (inQuiet) return; // Suppress push alerts during quiet hours
+      }
+
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${hours}:${minutes}`;
+      const todayStr = getTodayStr();
+
+      // 1. Scheduled Habit Reminders
+      habits.forEach((habit) => {
+        const habitReminderTime = habit.reminderTime || (habit.timeOfDay === 'Afternoon' ? '13:00' : habit.timeOfDay === 'Evening' ? '20:00' : '08:00');
+        
+        if (habitReminderTime === currentTimeStr) {
+          const notificationKey = `reminder_${todayStr}_${habit.id}_${currentTimeStr}`;
+          if (!sentNotificationsRef.current.has(notificationKey)) {
+            const todayLog = logs.find(l => l.habitId === habit.id && l.date === todayStr);
+            const isDone = todayLog && (todayLog.status === 'completed' || todayLog.status === 'skipped');
+            
+            if (!isDone) {
+              sentNotificationsRef.current.add(notificationKey);
+              sendBrowserNotification(`Time for ${habit.name}!`, {
+                body: 'Keep your streak going in HabitFlow.',
+                tag: notificationKey
+              });
+            }
+          }
+        }
+      });
+
+      // 2. Evening Streak Saver (8:00 PM Check)
+      if (currentTimeStr === '20:00') {
+        const eveningKey = `evening_streak_saver_${todayStr}`;
+        if (!sentNotificationsRef.current.has(eveningKey)) {
+          const uncompletedHabits = habits.filter((habit) => {
+            const todayLog = logs.find(l => l.habitId === habit.id && l.date === todayStr);
+            return !todayLog || (todayLog.status !== 'completed' && todayLog.status !== 'skipped');
+          });
+
+          if (uncompletedHabits.length > 0) {
+            sentNotificationsRef.current.add(eveningKey);
+            sendBrowserNotification("Don't break your streak!", {
+              body: 'You have habits left for today.',
+              tag: eveningKey
+            });
+          }
+        }
+      }
+    };
+
+    checkSchedule();
+    const intervalId = setInterval(checkSchedule, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [notificationsEnabled, permissionStatus, habits, logs]);
 
   const DEFAULT_CATEGORIES: Category[] = useMemo(() => [
     { id: 'general', name: 'General', color: '#666666', isCustom: false },
@@ -362,6 +508,49 @@ export default function App() {
       setAppError("AI Coach is temporarily unavailable.");
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleImportData = async (importedHabits: Habit[], importedLogs: HabitLog[]) => {
+    if (!user) return;
+    try {
+      for (const habit of importedHabits) {
+        const { id, ...habitData } = habit;
+        await addDoc(collection(db, 'habits'), {
+          ...habitData,
+          userId: user.uid,
+          createdAt: Date.now(),
+        });
+      }
+
+      for (const log of importedLogs) {
+        const logId = `${user.uid}_${log.habitId}_${log.date}`;
+        await setDoc(doc(db, 'logs', logId), {
+          ...log,
+          id: logId,
+          userId: user.uid,
+        });
+      }
+    } catch (err) {
+      console.error('Error importing data:', err);
+      throw err;
+    }
+  };
+
+  const handleResetData = async () => {
+    if (!user) return;
+    try {
+      for (const habit of habits) {
+        await deleteDoc(doc(db, 'habits', habit.id));
+      }
+      for (const log of logs) {
+        await deleteDoc(doc(db, 'logs', log.id));
+      }
+      setHabits([]);
+      setLogs([]);
+    } catch (err) {
+      console.error('Error resetting data:', err);
+      throw err;
     }
   };
 
@@ -772,37 +961,20 @@ export default function App() {
           )}
 
           {activeTab === 'settings' && (
-            <div className="space-y-8">
-              <h2 className="text-3xl font-bold text-primary">Settings</h2>
-              
-              <section className="bg-white rounded-2xl p-6 shadow-sm border border-black/5 space-y-4">
-                <h3 className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Profile</h3>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    {user?.photoURL ? (
-                      <img src={user.photoURL} alt="User" className="w-12 h-12 rounded-2xl object-cover" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-xl">
-                        {user?.displayName?.[0] || 'G'}
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-bold text-gray-800">{user?.displayName || 'Guest Explorer'}</p>
-                      <p className="text-xs text-gray-400">{user?.email || 'Synchronize your progress'}</p>
-                    </div>
-                  </div>
-                  {user?.isAnonymous ? (
-                    <button onClick={handleGoogleLogin} className="p-3 rounded-xl bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all">
-                      <LogIn size={20} />
-                    </button>
-                  ) : (
-                    <button onClick={handleLogout} className="p-3 rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all">
-                      <LogOut size={20} />
-                    </button>
-                  )}
-                </div>
-              </section>
-            </div>
+            <SettingsView
+              user={user}
+              userProfile={userProfile}
+              handleGoogleLogin={handleGoogleLogin}
+              handleLogout={handleLogout}
+              habits={habits}
+              logs={logs}
+              notificationsEnabled={notificationsEnabled}
+              permissionStatus={permissionStatus}
+              onToggleNotifications={handleToggleNotifications}
+              onSendTestNotification={handleSendTestNotification}
+              onImportData={handleImportData}
+              onResetData={handleResetData}
+            />
           )}
         </main>
 

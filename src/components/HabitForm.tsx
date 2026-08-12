@@ -28,6 +28,9 @@ export function HabitForm({ onSave, onDelete, onCancel, initialData, categories,
   const [name, setName] = useState(initialData?.name || '');
   const [category, setCategory] = useState<HabitCategory>(initialData?.category || 'Productivity');
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(initialData?.timeOfDay || 'Morning');
+  const [reminderTime, setReminderTime] = useState(
+    initialData?.reminderTime || (initialData?.timeOfDay === 'Afternoon' ? '13:00' : initialData?.timeOfDay === 'Evening' ? '20:00' : '08:00')
+  );
   const [icon, setIcon] = useState(initialData?.icon || 'Activity');
   const [color, setColor] = useState(initialData?.color || COLORS[0]);
   const [frequency, setFrequency] = useState<Frequency>(initialData?.frequency || 'daily');
@@ -69,6 +72,7 @@ export function HabitForm({ onSave, onDelete, onCancel, initialData, categories,
       name,
       category,
       timeOfDay,
+      reminderTime,
       icon,
       color,
       frequency,
@@ -172,7 +176,12 @@ export function HabitForm({ onSave, onDelete, onCancel, initialData, categories,
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setTimeOfDay(t)}
+                  onClick={() => {
+                    setTimeOfDay(t);
+                    if (t === 'Morning') setReminderTime('08:00');
+                    else if (t === 'Afternoon') setReminderTime('13:00');
+                    else if (t === 'Evening') setReminderTime('20:00');
+                  }}
                   className={cn(
                     "flex-1 py-3 rounded-2xl border-2 font-bold text-xs uppercase tracking-widest transition-all",
                     timeOfDay === t ? "bg-primary border-primary text-white shadow-md" : "bg-white border-transparent text-gray-400 hover:text-primary"
@@ -181,6 +190,22 @@ export function HabitForm({ onSave, onDelete, onCancel, initialData, categories,
                   {t}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold text-accent uppercase tracking-widest px-1">Scheduled Reminder Time</label>
+            <div className="relative group">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-5 text-gray-400 group-focus-within:text-primary transition-colors">
+                <Icons.Bell size={18} />
+              </span>
+              <input
+                type="time"
+                className="w-full bg-white border-0 ring-1 ring-black/5 rounded-2xl pl-14 pr-5 py-4 focus:ring-2 focus:ring-primary shadow-sm transition-all text-gray-800 font-bold"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                required
+              />
             </div>
           </div>
 
