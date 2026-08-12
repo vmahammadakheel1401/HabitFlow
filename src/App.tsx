@@ -89,7 +89,7 @@ export default function App() {
                 uid: u.uid,
                 email: u.email || '',
                 displayName: u.displayName || 'Guest Explorer',
-                photoURL: u.photoURL || undefined,
+                photoURL: u.photoURL || null,
                 isPremium: false,
               };
               setDoc(profileRef, newProfile).catch(e => console.error("Error creating profile:", e));
@@ -342,6 +342,7 @@ export default function App() {
         updatedAt: new Date().toISOString(),
       });
       setShowAddForm(false);
+      setActiveTab('home');
     } catch (error) {
       console.error("Error updating habit:", error);
       setAppError("Failed to update habit.");
@@ -357,6 +358,7 @@ export default function App() {
         createdAt: Date.now()
       });
       setShowAddForm(false);
+      setActiveTab('home');
     } catch (err) {
       console.error("Error saving habit:", err);
       setAppError("Could not save habit. Try again.");
