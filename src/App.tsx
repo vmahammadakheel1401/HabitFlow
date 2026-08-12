@@ -321,15 +321,16 @@ export default function App() {
 
   // Weekly Summary Trigger Logic
   useEffect(() => {
-    if (habits.length > 0 && isSunday(new Date())) {
+    if (user && habits.length > 0 && isSunday(new Date())) {
       const weekId = startOfWeek(new Date()).toISOString().split('T')[0];
-      const hasSeen = localStorage.getItem(`summary_${weekId}`);
+      const storageKey = `summary_${weekId}_${user.uid}`;
+      const hasSeen = localStorage.getItem(storageKey);
       if (!hasSeen) {
         setShowWeeklySummary(true);
-        localStorage.setItem(`summary_${weekId}`, 'true');
+        localStorage.setItem(storageKey, 'true');
       }
     }
-  }, [habits]);
+  }, [habits, user]);
 
   const handleGoogleLogin = async () => {
     setAppError(null);

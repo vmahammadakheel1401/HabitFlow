@@ -24,32 +24,48 @@ interface ChatViewProps {
   userProfile?: UserProfile | null;
 }
 
-const STORAGE_KEY = 'material_pure_chat_sessions';
+const getStorageKey = (uid?: string) => uid ? `material_pure_chat_sessions_${uid}` : null;
 
 export function ChatView({ habits = [], logs = [], userProfile }: ChatViewProps) {
-  const [sessions, setSessions] = useState<ChatSession[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+
+  const [activeSessionId, setActiveSessionId] = useState<string>('');
+
+  // Load user sessions when user changes
+  useEffect(() => {
+    const uid = userProfile?.uid;
+    if (uid) {
+      const key = getStorageKey(uid);
+      if (key) {
+        try {
+          const saved = localStorage.getItem(key);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setSessions(parsed);
+              setActiveSessionId(parsed[0].id);
+              return;
+            }
+          }
+        } catch (e) {
+          console.error("Error loading user chat sessions:", e);
+        }
       }
-    } catch (e) {
-      console.error("Error loading chat sessions:", e);
     }
-    // Default initial session
-    return [{
-      id: Date.now().toString(),
+    
+    // Default initial session if no saved data or no user
+    const defaultId = Date.now().toString();
+    const defaultSession: ChatSession[] = [{
+      id: defaultId,
       title: "New Habit Coach Chat",
       messages: [
         { role: 'assistant', content: "Hello! I'm your AI Habit Coach. I have live access to your habits, streaks, and progress. How can I help you optimize your routines today?" }
       ],
       updatedAt: Date.now()
     }];
-  });
-
-  const [activeSessionId, setActiveSessionId] = useState<string>(() => {
-    return sessions[0]?.id || Date.now().toString();
-  });
+    setSessions(defaultSession);
+    setActiveSessionId(defaultId);
+  }, [userProfile?.uid]);
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +73,7 @@ export function ChatView({ habits = [], logs = [], userProfile }: ChatViewProps)
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const currentSession = sessions.find(s => s.id === activeSessionId) || sessions[0] || {
-    id: Date.now().toString(),
+    id: activeSessionId || Date.now().toString(),
     title: "New Habit Coach Chat",
     messages: [{ role: 'assistant', content: "Hello! I'm your AI Habit Coach. I have live access to your habits, streaks, and progress. How can I help you optimize your routines today?" }],
     updatedAt: Date.now()
@@ -66,12 +82,18 @@ export function ChatView({ habits = [], logs = [], userProfile }: ChatViewProps)
   const messages = currentSession.messages;
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-    } catch (e) {
-      console.error("Error saving chat sessions:", e);
+    const uid = userProfile?.uid;
+    if (uid && sessions.length > 0) {
+      const key = getStorageKey(uid);
+      if (key) {
+        try {
+          localStorage.setItem(key, JSON.stringify(sessions));
+        } catch (e) {
+          console.error("Error saving chat sessions:", e);
+        }
+      }
     }
-  }, [sessions]);
+  }, [sessions, userProfile?.uid]);
 
   useEffect(() => {
     if (scrollRef.current) {

@@ -65,29 +65,30 @@ export function SettingsView({
   const [lastSyncedTime, setLastSyncedTime] = useState<string>('Just now');
 
   // Theme Accent State
-  const [selectedAccent, setSelectedAccent] = useState<string>(() => {
-    return localStorage.getItem('theme_accent_color') || '#059669';
-  });
+  const [selectedAccent, setSelectedAccent] = useState<string>('#059669');
 
   // Week & Day Rollover Preferences
-  const [firstDayOfWeek, setFirstDayOfWeek] = useState<'Monday' | 'Sunday'>(() => {
-    return (localStorage.getItem('first_day_of_week') as 'Monday' | 'Sunday') || 'Monday';
-  });
+  const [firstDayOfWeek, setFirstDayOfWeek] = useState<'Monday' | 'Sunday'>('Monday');
 
-  const [dayRolloverTime, setDayRolloverTime] = useState<string>(() => {
-    return localStorage.getItem('day_rollover_time') || '00:00';
-  });
+  const [dayRolloverTime, setDayRolloverTime] = useState<string>('00:00');
 
   // Quiet Hours State
-  const [quietHoursEnabled, setQuietHoursEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('quiet_hours_enabled') === 'true';
-  });
-  const [quietHoursStart, setQuietHoursStart] = useState<string>(() => {
-    return localStorage.getItem('quiet_hours_start') || '22:00';
-  });
-  const [quietHoursEnd, setQuietHoursEnd] = useState<string>(() => {
-    return localStorage.getItem('quiet_hours_end') || '07:00';
-  });
+  const [quietHoursEnabled, setQuietHoursEnabled] = useState<boolean>(false);
+  const [quietHoursStart, setQuietHoursStart] = useState<string>('22:00');
+  const [quietHoursEnd, setQuietHoursEnd] = useState<string>('07:00');
+
+  // Load User Preferences
+  useEffect(() => {
+    const uid = userProfile?.uid;
+    if (uid) {
+      setSelectedAccent(localStorage.getItem(`theme_accent_color_${uid}`) || '#059669');
+      setFirstDayOfWeek((localStorage.getItem(`first_day_of_week_${uid}`) as 'Monday' | 'Sunday') || 'Monday');
+      setDayRolloverTime(localStorage.getItem(`day_rollover_time_${uid}`) || '00:00');
+      setQuietHoursEnabled(localStorage.getItem(`quiet_hours_enabled_${uid}`) === 'true');
+      setQuietHoursStart(localStorage.getItem(`quiet_hours_start_${uid}`) || '22:00');
+      setQuietHoursEnd(localStorage.getItem(`quiet_hours_end_${uid}`) || '07:00');
+    }
+  }, [userProfile?.uid]);
 
   // Modal & File Import States
   const [showResetModal, setShowResetModal] = useState(false);
@@ -111,40 +112,52 @@ export function SettingsView({
 
   // Change Accent Color
   const handleSelectAccent = (hex: string) => {
+    const uid = userProfile?.uid;
+    if (!uid) return;
     setSelectedAccent(hex);
-    localStorage.setItem('theme_accent_color', hex);
+    localStorage.setItem(`theme_accent_color_${uid}`, hex);
     document.documentElement.style.setProperty('--color-primary', hex);
     showStatus('success', 'Theme accent color updated!');
   };
 
   // Change First Day of Week
   const handleFirstDayChange = (day: 'Monday' | 'Sunday') => {
+    const uid = userProfile?.uid;
+    if (!uid) return;
     setFirstDayOfWeek(day);
-    localStorage.setItem('first_day_of_week', day);
+    localStorage.setItem(`first_day_of_week_${uid}`, day);
     showStatus('success', `First day of week set to ${day}`);
   };
 
   // Change Day Rollover
   const handleRolloverChange = (time: string) => {
+    const uid = userProfile?.uid;
+    if (!uid) return;
     setDayRolloverTime(time);
-    localStorage.setItem('day_rollover_time', time);
+    localStorage.setItem(`day_rollover_time_${uid}`, time);
     showStatus('success', 'Day rollover time updated!');
   };
 
   // Toggle Quiet Hours
   const handleQuietHoursToggle = (enabled: boolean) => {
+    const uid = userProfile?.uid;
+    if (!uid) return;
     setQuietHoursEnabled(enabled);
-    localStorage.setItem('quiet_hours_enabled', enabled ? 'true' : 'false');
+    localStorage.setItem(`quiet_hours_enabled_${uid}`, enabled ? 'true' : 'false');
   };
 
   const handleQuietHoursStartChange = (time: string) => {
+    const uid = userProfile?.uid;
+    if (!uid) return;
     setQuietHoursStart(time);
-    localStorage.setItem('quiet_hours_start', time);
+    localStorage.setItem(`quiet_hours_start_${uid}`, time);
   };
 
   const handleQuietHoursEndChange = (time: string) => {
+    const uid = userProfile?.uid;
+    if (!uid) return;
     setQuietHoursEnd(time);
-    localStorage.setItem('quiet_hours_end', time);
+    localStorage.setItem(`quiet_hours_end_${uid}`, time);
   };
 
   // Export Data JSON
