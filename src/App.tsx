@@ -376,19 +376,61 @@ export default function App() {
   }, [habits, logs, today]);
 
   const categoryStats = useMemo(() => {
-    return categories.map(cat => {
+    const catCompletions: Record<string, number> = {};
+    const catActiveCounts: Record<string, number> = {};
+    let totalCompletions = 0;
+    let totalActiveHabits = 0;
+
+    categories.forEach(cat => {
       const catHabits = habits.filter(h => h.category === cat.name);
-      if (catHabits.length === 0) return { id: cat.id, category: cat.name, progress: 0, count: 0, color: cat.color };
-      
-      const completedLogs = logs.filter(l => 
-        catHabits.find(h => h.id === l.habitId) && (l.status === 'completed' || l.status === 'skipped')
+      const count = catHabits.length;
+      catActiveCounts[cat.name] = count;
+      totalActiveHabits += count;
+
+      const completed = logs.filter(l => 
+        catHabits.some(h => h.id === l.habitId) && (l.status === 'completed' || l.status === 'skipped')
       ).length;
-      
-      const totalPossibleLogs = Math.max(1, catHabits.length * 30);
-      const progress = Math.min(100, Math.round((completedLogs / totalPossibleLogs) * 100));
-      return { id: cat.id, category: cat.name, progress, count: catHabits.length, color: cat.color };
-    }).filter(s => s.count > 0 || s.progress > 0);
+      catCompletions[cat.name] = completed;
+      totalCompletions += completed;
+    });
+
+    return categories.map(cat => {
+      const count = catActiveCounts[cat.name] || 0;
+      if (count === 0) return { id: cat.id, category: cat.name, progress: 0, count: 0, color: cat.color };
+
+      let progress = 0;
+      if (totalCompletions > 0) {
+        const catComp = catCompletions[cat.name] || 0;
+        progress = Math.round((catComp / totalCompletions) * 100);
+      } else {
+        progress = totalActiveHabits > 0 ? Math.round((count / totalActiveHabits) * 100) : 0;
+      }
+
+      return { id: cat.id, category: cat.name, progress, count, color: cat.color };
+    }).filter(s => s.count > 0);
   }, [categories, habits, logs]);
+
+  const consistencyGraphData = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = subDays(new Date(), 6 - i);
+      const dateStr = format(d, 'yyyy-MM-dd');
+      const label = format(d, 'EEE');
+
+      const activeHabitsOnDay = habits.filter(h => {
+        const createdDateStr = format(new Date(h.createdAt || Date.now()), 'yyyy-MM-dd');
+        return createdDateStr <= dateStr;
+      });
+      const totalScheduled = activeHabitsOnDay.length;
+
+      const dayLogs = logs.filter(l => l.date === dateStr && (l.status === 'completed' || l.status === 'skipped'));
+      const completedCount = dayLogs.filter(l => activeHabitsOnDay.some(h => h.id === l.habitId)).length;
+
+      const percentage = totalScheduled > 0 ? Math.round((completedCount / totalScheduled) * 100) : 0;
+
+      return { dateStr, label, percentage, completedCount, totalScheduled };
+    });
+    return days;
+  }, [habits, logs]);
 
   const hallOfFame = useMemo(() => {
     if (habits.length === 0) return null;
@@ -694,16 +736,40 @@ export default function App() {
                 <CalendarView logs={logs} habits={habits} currentDate={new Date()} />
               </section>
 
+              {/* Weekly Consistency Trend Graph */}
+              <section className="bg-white rounded-3xl p-6 shadow-sm border border-black/5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-accent">Weekly Consistency Trend</h3>
+                  <Trophy size={16} className="text-primary" />
+                </div>
+                <div className="flex items-end justify-between gap-2 pt-4 h-36">
+                  {consistencyGraphData.map((day, idx) => (
+                    <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
+                      <span className="text-[10px] font-bold text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {day.percentage}%
+                      </span>
+                      <div className="w-full max-w-[28px] bg-gray-100 rounded-xl overflow-hidden h-full flex items-end">
+                        <div 
+                          className="w-full bg-primary rounded-xl transition-all duration-700 ease-out group-hover:bg-primary/80" 
+                          style={{ height: `${Math.max(8, day.percentage)}%` }} 
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-500 uppercase">{day.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Habit Category Breakdown */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-black/5 space-y-6">
+                <div className="bg-white rounded-3xl p-5 shadow-sm border border-black/5 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-accent">Category Breakdown</h3>
                     <Activity size={16} className="text-primary" />
                   </div>
-                  <div className="space-y-5">
+                  <div className="max-h-48 overflow-y-auto space-y-4 pr-1">
                     {categoryStats.map((stat) => (
-                      <div key={stat.id} className="space-y-2">
+                      <div key={stat.id} className="space-y-1.5">
                         <div className="flex justify-between items-end">
                           <span className="text-sm font-bold text-gray-700">{stat.category}</span>
                           <span className="text-[10px] font-bold text-primary">{stat.progress}%</span>
