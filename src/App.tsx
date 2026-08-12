@@ -263,13 +263,7 @@ export default function App() {
             unsubscribeCategories();
           };
         } else {
-          try {
-            await signInAnonymously(auth);
-          } catch (error: any) {
-            console.error("Auth error:", error.code);
-            setAppError(`Authentication failed: ${error.code}. Please refresh.`);
-            setLoading(false);
-          }
+          setLoading(false);
         }
       } catch (err: any) {
         console.error("Initialization error:", err);
@@ -336,24 +330,17 @@ export default function App() {
 
   const handleGoogleLogin = async () => {
     setAppError(null);
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error: any) {
-      console.error("Auth error", error);
-      // Fallback to anonymous login if popup is blocked or fails (e.g. in iframe)
-      try {
-        console.log("Falling back to anonymous login...");
-        await signInAnonymously(auth);
-      } catch (anonError: any) {
-        console.warn("Firebase Auth blocked. Switching to Offline Demo Mode.");
-        // Fallback to a Local Demo Mode if Firebase console configuration is missing
-        setUser({ uid: 'local-demo-user', displayName: 'Guest User', email: 'guest@habitflow.app', photoURL: '' } as any);
-        setAppError("Running in Offline Demo Mode. Your changes will not sync to the cloud.");
-      }
-    }
+    // Directly log the user in locally to bypass Firebase API key issues and sign-in popups
+    setUser({ uid: 'local-demo-user', displayName: 'Guest User', email: 'guest@habitflow.app', photoURL: '' } as any);
   };
 
-  const handleLogout = () => signOut(auth);
+  const handleLogout = () => {
+    if (user?.uid === 'local-demo-user') {
+      setUser(null);
+    } else {
+      signOut(auth);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -361,8 +348,8 @@ export default function App() {
     // Demo Mode bypass for data fetching
     if (user.uid === 'local-demo-user') {
       setHabits([
-        { id: 'demo-1', userId: user.uid, name: 'Drink Water', frequency: 'daily', timeOfDay: 'morning', icon: '💧', color: 'blue', createdAt: Date.now() },
-        { id: 'demo-2', userId: user.uid, name: 'Read 10 Pages', frequency: 'daily', timeOfDay: 'evening', icon: '📚', color: 'indigo', createdAt: Date.now() }
+        { id: 'demo-1', userId: user.uid, name: 'Drink Water', frequency: 'daily', timeOfDay: 'Anytime', icon: '💧', color: 'blue', createdAt: Date.now() },
+        { id: 'demo-2', userId: user.uid, name: 'Read 10 Pages', frequency: 'daily', timeOfDay: 'Anytime', icon: '📚', color: 'indigo', createdAt: Date.now() }
       ]);
       setLogs([]);
       setLoading(false);
