@@ -1,45 +1,80 @@
 {
-  "collections": {
-    "profiles": {
-      "uid": "string",
-      "email": "string",
-      "displayName": "string",
-      "photoURL": "string?",
-      "isPremium": "boolean?",
-      "subscriptionPlan": "string?",
-      "renewalDate": "string?",
-      "hiddenCategoryIds": "string[]?"
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User account and profile settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "hiddenCategoryIds": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["uid", "email", "displayName"]
     },
-    "categories": {
-      "id": "string",
-      "name": "string",
-      "color": "string",
-      "userId": "string?",
-      "isCustom": "boolean"
+    "Habit": {
+      "title": "Habit",
+      "description": "A habit tracked by the user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "timeOfDay": { "type": "string", "enum": ["Morning", "Afternoon", "Evening"] },
+        "icon": { "type": "string" },
+        "color": { "type": "string" },
+        "frequency": { "type": "string" },
+        "type": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["name", "userId", "createdAt"]
     },
-    "habits": {
-      "id": "string",
-      "name": "string",
-      "category": "string",
-      "timeOfDay": "string",
-      "icon": "string",
-      "color": "string",
-      "frequency": "string",
-      "type": "string",
-      "target": "string?",
-      "startDate": "string",
-      "reminderTime": "string?",
-      "notes": "string?",
-      "userId": "string",
-      "createdAt": "number"
+    "HabitLog": {
+      "title": "Habit Log",
+      "description": "Daily completion record for a habit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "habitId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["completed", "skipped", "none"] },
+        "userId": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["habitId", "date", "status", "userId"]
     },
-    "logs": {
-      "id": "string",
-      "habitId": "string",
-      "date": "string",
-      "status": "string",
-      "value": "number?",
-      "userId": "string"
+    "Category": {
+      "title": "Category",
+      "description": "Habit category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "userId": { "type": "string" },
+        "isCustom": { "type": "boolean" }
+      },
+      "required": ["name", "color", "isCustom"]
+    }
+  },
+  "firestore": {
+    "/profiles/{uid}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    },
+    "/habits/{habitId}": {
+      "schema": "Habit",
+      "description": "User habits"
+    },
+    "/logs/{logId}": {
+      "schema": "HabitLog",
+      "description": "Completion logs"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Habit categories"
     }
   }
 }

@@ -218,24 +218,33 @@ export default function App() {
           
           // Fetch/Initialize Profile
           const profileRef = doc(db, 'profiles', u.uid);
+          
+          // ENSURE PROFILE EXISTS: Automatically create it using setDoc with merge: true 
+          // to prevent read failures for brand new users.
+          const initialProfile: UserProfile = {
+            uid: u.uid,
+            email: u.email || '',
+            displayName: u.displayName || 'Guest Explorer',
+            photoURL: u.photoURL || null,
+          };
+          
+          // Use setDoc with merge to ensure the document exists without overwriting existing data.
+          setDoc(profileRef, initialProfile, { merge: true }).catch(e => {
+            console.warn("Silent background profile sync failed:", e);
+          });
+
           const unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
             if (docSnap.exists()) {
               const data = docSnap.data() as UserProfile;
               setUserProfile(data);
-            } else {
-              const newProfile: UserProfile = {
-                uid: u.uid,
-                email: u.email || '',
-                displayName: u.displayName || 'Guest Explorer',
-                photoURL: u.photoURL || null,
-              };
-              setDoc(profileRef, newProfile).catch(e => console.error("Error creating profile:", e));
-              setUserProfile(newProfile);
             }
             setLoading(false);
           }, (err) => {
-            console.error("Profile snapshot error:", err);
-            setAppError("Unable to sync profile. Check your connection.");
+            // Prevent triggering the warning banner for expected permission delays or missing docs
+            if (err.code !== 'permission-denied' && err.code !== 'unavailable') {
+              console.error("Profile snapshot error:", err);
+              setAppError("Unable to sync profile. Check your connection.");
+            }
           });
 
           // Fetch Custom Categories
