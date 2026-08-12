@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Trophy, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { Habit, HabitLog } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 
 interface WeeklySummaryProps {
   isOpen: boolean;
@@ -14,7 +14,7 @@ export function WeeklySummary({ isOpen, onClose, habits, logs }: WeeklySummaryPr
   const last7Days = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    return d.toISOString().split('T')[0];
+    return formatDate(d);
   });
 
   const weeklyLogs = logs.filter(l => last7Days.includes(l.date));

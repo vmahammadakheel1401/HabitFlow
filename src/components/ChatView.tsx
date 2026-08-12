@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Sparkles, User, Bot, History, MessageCircle, Plus, Trash2, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Send, Sparkles, User, History, MessageCircle, Plus, Trash2, X, Lightbulb } from 'lucide-react';
+import { cn, formatDate } from '@/lib/utils';
+import { Habit, HabitLog, UserProfile } from '@/types';
+import { subDays } from 'date-fns';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -16,11 +18,14 @@ interface ChatSession {
 }
 
 interface ChatViewProps {
+  habits?: Habit[];
+  logs?: HabitLog[];
+  userProfile?: UserProfile | null;
 }
 
 const STORAGE_KEY = 'material_pure_chat_sessions';
 
-export function ChatView({ }: ChatViewProps) {
+export function ChatView({ habits = [], logs = [], userProfile }: ChatViewProps) {
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -35,7 +40,7 @@ export function ChatView({ }: ChatViewProps) {
       id: Date.now().toString(),
       title: "New Habit Coach Chat",
       messages: [
-        { role: 'assistant', content: "Hello! I'm your AI Habit Coach. How can I help you build better routines and achieve your goals today?" }
+        { role: 'assistant', content: "Hello! I'm your AI Habit Coach. I have live access to your habits, streaks, and progress. How can I help you optimize your routines today?" }
       ],
       updatedAt: Date.now()
     }];
@@ -53,7 +58,7 @@ export function ChatView({ }: ChatViewProps) {
   const currentSession = sessions.find(s => s.id === activeSessionId) || sessions[0] || {
     id: Date.now().toString(),
     title: "New Habit Coach Chat",
-    messages: [{ role: 'assistant', content: "Hello! I'm your AI Habit Coach. How can I help you build better routines and achieve your goals today?" }],
+    messages: [{ role: 'assistant', content: "Hello! I'm your AI Habit Coach. I have live access to your habits, streaks, and progress. How can I help you optimize your routines today?" }],
     updatedAt: Date.now()
   };
 
@@ -72,6 +77,63 @@ export function ChatView({ }: ChatViewProps) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isLoading, showHistory]);
+
+  const buildHabitContext = () => {
+    const todayStr = formatDate(new Date());
+
+    if (!habits || habits.length === 0) {
+      return `User Name: ${userProfile?.displayName || 'User'}\nUser currently has 0 active habits registered in the system.`;
+    }
+
+    let completedTodayCount = 0;
+    let totalStreakSum = 0;
+
+    const habitDetails = habits.map((habit, index) => {
+      let streak = 0;
+      let checkDate = new Date();
+      for (let i = 0; i < 365; i++) {
+        const dateStr = formatDate(checkDate);
+        const log = logs.find(l => l.habitId === habit.id && l.date === dateStr);
+        if (log && (log.status === 'completed' || log.status === 'skipped')) {
+          streak++;
+          checkDate = subDays(checkDate, 1);
+        } else if (dateStr === todayStr) {
+          checkDate = subDays(checkDate, 1);
+          continue;
+        } else {
+          break;
+        }
+      }
+
+      totalStreakSum += streak;
+
+      const todayLog = logs.find(l => l.habitId === habit.id && l.date === todayStr);
+      let todayStatus = 'Not completed yet today';
+      if (todayLog?.status === 'completed') {
+        todayStatus = 'Completed today ✅';
+        completedTodayCount++;
+      } else if (todayLog?.status === 'skipped') {
+        todayStatus = 'Skipped today ⏭️';
+      } else if (todayLog?.status === 'failed') {
+        todayStatus = 'Failed today ❌';
+      }
+
+      return `${index + 1}. "${habit.name}" - Category: ${habit.category}, Target Frequency: ${habit.frequency}, Time of Day: ${habit.timeOfDay}, Current Streak: ${streak} day${streak === 1 ? '' : 's'}, Status Today: ${todayStatus}`;
+    });
+
+    const avgStreak = (totalStreakSum / habits.length).toFixed(1);
+
+    return `
+[LIVE USER HABITS & PERFORMANCE CONTEXT]
+User Name: ${userProfile?.displayName || 'Guest Explorer'}
+Total Active Habits: ${habits.length}
+Completed Today: ${completedTodayCount} of ${habits.length} habits
+Average Streak: ${avgStreak} days
+
+Active Habits Summary:
+${habitDetails.join('\n')}
+`.trim();
+  };
 
   const updateCurrentMessages = (newMessages: Message[]) => {
     setSessions(prev => {
@@ -99,7 +161,7 @@ export function ChatView({ }: ChatViewProps) {
       id: newId,
       title: "New Conversation",
       messages: [
-        { role: 'assistant', content: "Hello! I'm your AI Habit Coach. What habit would you like to build or discuss today?" }
+        { role: 'assistant', content: "Hello! I'm your AI Habit Coach. I'm connected to your live habit dashboard. What would you like to discuss or improve today?" }
       ],
       updatedAt: Date.now()
     };
@@ -131,25 +193,39 @@ export function ChatView({ }: ChatViewProps) {
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (messageText?: string) => {
+    const textToSend = messageText || input.trim();
+    if (!textToSend || isLoading) return;
 
-    const userMessage = input.trim();
-    setInput('');
-    const updatedMessages = [...messages, { role: 'user' as const, content: userMessage }];
+    if (!messageText) setInput('');
+    const updatedMessages = [...messages, { role: 'user' as const, content: textToSend }];
     updateCurrentMessages(updatedMessages);
     setIsLoading(true);
+
+    const habitContext = buildHabitContext();
+
+    const fullPrompt = `You are a supportive, insightful, and motivating AI Habit Coach in the Material Pure habit-tracking application.
+
+${habitContext}
+
+User Message: "${textToSend}"
+
+Instructions:
+- Use the live user habit context above to give tailored advice, streak encouragement, or time-management tips.
+- Do NOT ask the user to list their habits or streaks because you already have direct access to their live habit dashboard above.
+- Reference specific habit names, streaks, or today's completion status naturally when relevant.
+- Keep responses concise, warm, actionable, and formatted cleanly with bolding or bullet points.`;
 
     try {
       const response = await fetch('/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          prompt: `You are a supportive habit-tracking coach. The user says: "${userMessage}". Provide a helpful, concise response formatted cleanly with bolding or bullet points where appropriate.` 
+          prompt: fullPrompt
         }),
       });
       const data = await response.json();
-      const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: data.text }];
+      const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: data.text || "I've analyzed your habits! Keep up the momentum!" }];
       updateCurrentMessages(finalMessages);
     } catch (error) {
       const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: "Sorry, I'm having trouble connecting right now. Please try again shortly." }];
@@ -289,6 +365,25 @@ export function ChatView({ }: ChatViewProps) {
 
       {/* Fixed Bottom Input Bar */}
       <div className="sticky bottom-[80px] left-0 right-0 bg-background/95 backdrop-blur-xl border-t border-black/5 p-4 sm:p-5 z-30">
+        {messages.length <= 2 && (
+          <div className="max-w-4xl mx-auto mb-3 flex flex-wrap gap-2">
+            {[
+              "📊 Analyze my habit progress",
+              "🔥 How can I maintain my streaks?",
+              "💡 Motivation for today's habits"
+            ].map((suggestion, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSend(suggestion)}
+                disabled={isLoading}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all active:scale-95 border border-primary/20 flex items-center gap-1.5"
+              >
+                <Lightbulb size={12} />
+                <span>{suggestion}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="max-w-4xl mx-auto relative flex items-center">
           <input
             className="w-full bg-white ring-1 ring-black/5 border-0 rounded-2xl px-6 py-4 sm:py-5 pr-16 focus:ring-2 focus:ring-primary shadow-sm transition-all text-gray-800 text-sm sm:text-base font-medium placeholder:text-gray-400"
@@ -298,7 +393,7 @@ export function ChatView({ }: ChatViewProps) {
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           />
           <button 
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={isLoading || !input.trim()}
             className="absolute right-2 p-3 sm:p-3.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/25 disabled:opacity-50 disabled:grayscale transition-all active:scale-95 flex items-center justify-center hover:bg-primary/90"
             title="Send Message"

@@ -21,10 +21,11 @@ import { CalendarView } from '@/components/CalendarView';
 import { HabitForm } from '@/components/HabitForm';
 import { HabitDetail } from '@/components/HabitDetail';
 import { WeeklySummary } from '@/components/WeeklySummary';
+import { ActivityHeatmapAndBadges } from '@/components/ActivityHeatmapAndBadges';
 import { ChatView } from '@/components/ChatView';
 import { getTodayStr, cn } from '@/lib/utils';
 import { Plus, User as UserIcon, Bell, Moon, Database, Info, LogIn, LogOut, Trophy, Award, Zap, Brain, Heart, Activity, Crown, Star } from 'lucide-react';
-import { format, isSunday, startOfWeek, subDays } from 'date-fns';
+import { format, isSunday, startOfWeek, subDays, addDays } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
@@ -411,8 +412,10 @@ export default function App() {
   }, [categories, habits, logs]);
 
   const consistencyGraphData = useMemo(() => {
+    const now = new Date();
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
     const days = Array.from({ length: 7 }, (_, i) => {
-      const d = subDays(new Date(), 6 - i);
+      const d = addDays(weekStart, i);
       const dateStr = format(d, 'yyyy-MM-dd');
       const label = format(d, 'EEE');
 
@@ -751,7 +754,7 @@ export default function App() {
                       <div className="w-full max-w-[28px] bg-gray-100 rounded-xl overflow-hidden h-full flex items-end">
                         <div 
                           className="w-full bg-primary rounded-xl transition-all duration-700 ease-out group-hover:bg-primary/80" 
-                          style={{ height: `${Math.max(8, day.percentage)}%` }} 
+                          style={{ height: `${day.percentage}%` }} 
                         />
                       </div>
                       <span className="text-[10px] font-bold text-gray-500 uppercase">{day.label}</span>
@@ -760,36 +763,12 @@ export default function App() {
                 </div>
               </section>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Habit Category Breakdown */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-black/5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-accent">Category Breakdown</h3>
-                    <Activity size={16} className="text-primary" />
-                  </div>
-                  <div className="max-h-48 overflow-y-auto space-y-4 pr-1">
-                    {categoryStats.map((stat) => (
-                      <div key={stat.id} className="space-y-1.5">
-                        <div className="flex justify-between items-end">
-                          <span className="text-sm font-bold text-gray-700">{stat.category}</span>
-                          <span className="text-[10px] font-bold text-primary">{stat.progress}%</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full rounded-full transition-all duration-1000 ease-out" 
-                            style={{ width: `${stat.progress}%`, backgroundColor: stat.color }} 
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <ActivityHeatmapAndBadges habits={habits} logs={logs} />
             </div>
           )}
 
           {activeTab === 'chat' && (
-            <ChatView />
+            <ChatView habits={habits} logs={logs} userProfile={userProfile} />
           )}
 
           {activeTab === 'settings' && (

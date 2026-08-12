@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, subDays } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay } from 'date-fns';
 import { HabitLog, Habit } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 interface CalendarViewProps {
   logs: HabitLog[];
@@ -10,24 +11,40 @@ interface CalendarViewProps {
 }
 
 export function CalendarView({ logs, habits = [], currentDate }: CalendarViewProps) {
-  const days = useMemo(() => {
+  const { paddingDays, days } = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDayOfMonth = new Date(year, month, 1);
+    
+    // getDay(): 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+    const jsDay = firstDayOfMonth.getDay();
+    // Monday-start week: Monday (1) -> 0 offset, Sunday (0) -> 6 offset
+    const offset = jsDay === 0 ? 6 : jsDay - 1;
+
     const start = startOfMonth(currentDate);
     const end = endOfMonth(currentDate);
-    return eachDayOfInterval({ start, end });
+    const intervalDays = eachDayOfInterval({ start, end });
+
+    return {
+      paddingDays: offset,
+      days: intervalDays
+    };
   }, [currentDate]);
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-black/5">
-      <div className="grid grid-cols-7 gap-2 mb-2 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+    <div className="max-w-md mx-auto bg-white rounded-2xl p-3 shadow-sm border border-black/5">
+      <div className="grid grid-cols-7 gap-1.5 mb-2 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
         {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
           <div key={i}>{d}</div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-y-4 gap-x-2 text-center text-sm font-bold">
-        {days.map((day, idx) => {
-          const dateStr = day.toISOString().split('T')[0];
+      <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-bold">
+        {Array.from({ length: paddingDays }).map((_, idx) => (
+          <div key={`empty-${idx}`} />
+        ))}
+        {days.map((day) => {
+          const dateStr = formatDate(day);
           
-          // Logic for all-habit completion highlight (if habits are passed)
           const dayLogs = logs.filter(l => l.date === dateStr);
           const isFullCompletion = habits.length > 0 && 
             habits.every(h => dayLogs.find(l => l.habitId === h.id && (l.status === 'completed' || l.status === 'skipped')));
@@ -36,37 +53,32 @@ export function CalendarView({ logs, habits = [], currentDate }: CalendarViewPro
           const isCompleted = singleHabitLog?.status === 'completed';
           const isSkipped = singleHabitLog?.status === 'skipped';
           
-          // Streak connection logic (visual line between consecutive completed days)
-          const prevDay = subDays(day, 1);
-          const prevDayLog = logs.find(l => isSameDay(new Date(l.date), prevDay));
-          const hasPrevStreak = (isCompleted || isSkipped) && 
-            (prevDayLog?.status === 'completed' || prevDayLog?.status === 'skipped') &&
-            day.getDay() !== 1; // Don't connect across rows (Monday is index 1 or 0 depending on locale, here we assume start of week)
-
           return (
             <div
-              key={day.toISOString()}
-              className="relative group"
+              key={dateStr}
+              className="relative group flex items-center justify-center"
             >
-              {hasPrevStreak && (
-                <div className="absolute top-1/2 -left-3 right-1/2 h-1 bg-primary/30 -translate-y-1/2 z-0" />
-              )}
               <div
                 className={cn(
-                  "relative z-10 aspect-square flex flex-col items-center justify-center rounded-xl transition-all border-2",
-                  !isSameMonth(day, currentDate) && "opacity-10",
+                  "w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all border relative",
+                  !isSameMonth(day, currentDate) && "opacity-15",
                   isFullCompletion 
-                    ? "bg-accent border-accent text-white shadow-lg shadow-accent/20 scale-105" 
+                    ? "bg-gradient-to-br from-primary via-emerald-600 to-teal-700 border-emerald-400 text-white shadow-md ring-2 ring-emerald-400/50 scale-105 z-10" 
                     : isCompleted 
-                      ? "bg-primary border-primary text-white shadow-md shadow-primary/20" 
+                      ? "bg-primary border-primary text-white shadow-sm" 
                       : isSkipped
-                        ? "bg-amber-50 border-amber-200 text-amber-700 animate-pulse"
-                        : "bg-background border-transparent text-gray-800",
-                  isToday(day) && !isCompleted && !isSkipped && !isFullCompletion && "border-primary text-primary"
+                        ? "bg-amber-50 border-amber-200 text-amber-700"
+                        : "bg-background border-transparent text-gray-700 hover:bg-gray-100",
+                  isToday(day) && !isCompleted && !isSkipped && !isFullCompletion && "border-primary text-primary font-extrabold"
                 )}
               >
                 {format(day, 'd')}
-                {isSkipped && <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full border border-white" />}
+                {isFullCompletion && (
+                  <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-sm">
+                    <Check size={8} strokeWidth={3} />
+                  </div>
+                )}
+                {isSkipped && !isFullCompletion && <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-amber-500 rounded-full" />}
               </div>
             </div>
           );
