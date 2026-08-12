@@ -345,13 +345,10 @@ export default function App() {
         console.log("Falling back to anonymous login...");
         await signInAnonymously(auth);
       } catch (anonError: any) {
-        if (error.code === 'auth/unauthorized-domain') {
-          setAppError(`Unregistered Domain: You must add this URL to the Firebase Console -> Authentication -> Settings -> Authorized Domains. Error: ${error.message}`);
-        } else if (error.code === 'auth/admin-restricted-operation') {
-          setAppError("Authentication service is being initialized. Please try again.");
-        } else {
-          setAppError(`Login failed: ${error.message}`);
-        }
+        console.warn("Firebase Auth blocked. Switching to Offline Demo Mode.");
+        // Fallback to a Local Demo Mode if Firebase console configuration is missing
+        setUser({ uid: 'local-demo-user', displayName: 'Guest User', email: 'guest@habitflow.app', photoURL: '' } as any);
+        setAppError("Running in Offline Demo Mode. Your changes will not sync to the cloud.");
       }
     }
   };
@@ -360,6 +357,17 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
+
+    // Demo Mode bypass for data fetching
+    if (user.uid === 'local-demo-user') {
+      setHabits([
+        { id: 'demo-1', userId: user.uid, name: 'Drink Water', frequency: 'daily', timeOfDay: 'morning', icon: '💧', color: 'blue', createdAt: Date.now() },
+        { id: 'demo-2', userId: user.uid, name: 'Read 10 Pages', frequency: 'daily', timeOfDay: 'evening', icon: '📚', color: 'indigo', createdAt: Date.now() }
+      ]);
+      setLogs([]);
+      setLoading(false);
+      return;
+    }
 
     const qHabits = query(
       collection(db, 'habits'),
@@ -400,8 +408,21 @@ export default function App() {
 
   const toggleHabit = async (habitId: string) => {
     if (!user) return;
+    const logId = `${user.uid}_${habitId}_${today}`;
+
+    // Demo Mode bypass
+    if (user.uid === 'local-demo-user') {
+      const existingLog = logs.find(l => l.id === logId);
+      if (existingLog) {
+        const newStatus = existingLog.status === 'completed' ? 'none' : 'completed';
+        setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: newStatus, timestamp: newStatus === 'completed' ? Date.now() : l.timestamp } : l));
+      } else {
+        setLogs(prev => [...prev, { id: logId, habitId, date: today, status: 'completed', timestamp: Date.now(), userId: user.uid }]);
+      }
+      return;
+    }
+
     try {
-      const logId = `${user.uid}_${habitId}_${today}`;
       const existingLog = logs.find(l => l.id === logId);
 
       if (existingLog) {
@@ -428,7 +449,20 @@ export default function App() {
 
   const skipHabit = async (habitId: string) => {
     if (!user) return;
+    const logId = `${user.uid}_${habitId}_${today}`;
     
+    // Demo Mode bypass
+    if (user.uid === 'local-demo-user') {
+      setLogs(prev => {
+        const existing = prev.find(l => l.id === logId);
+        if (existing) return prev.map(l => l.id === logId ? { ...l, status: 'skipped' } : l);
+        return [...prev, { id: logId, userId: user.uid, habitId, date: today, status: 'skipped' }];
+      });
+      setSkipFlash(habitId);
+      setTimeout(() => setSkipFlash(null), 1000);
+      return;
+    }
+
     try {
       // Check monthly limit
       const currentMonth = today.substring(0, 7); // YYYY-MM
@@ -443,7 +477,6 @@ export default function App() {
         return;
       }
 
-      const logId = `${user.uid}_${habitId}_${today}`;
       await setDoc(doc(db, 'logs', logId), {
         id: logId,
         userId: user.uid,
@@ -463,6 +496,13 @@ export default function App() {
 
   const deleteHabit = async (habitId: string) => {
     if (!user || !habitId) return;
+
+    if (user.uid === 'local-demo-user') {
+      setHabits(prev => prev.filter(h => h.id !== habitId));
+      setSelectedHabitId(null);
+      return;
+    }
+
     try {
       await deleteDoc(doc(db, 'habits', habitId));
       setSelectedHabitId(null);
@@ -474,6 +514,14 @@ export default function App() {
 
   const updateHabit = async (habitId: string, habitData: Partial<Habit>) => {
     if (!user) return;
+
+    if (user.uid === 'local-demo-user') {
+      setHabits(prev => prev.map(h => h.id === habitId ? { ...h, ...habitData } as Habit : h));
+      setShowAddForm(false);
+      setActiveTab('home');
+      return;
+    }
+
     try {
       await updateDoc(doc(db, 'habits', habitId), {
         ...habitData,
@@ -489,6 +537,15 @@ export default function App() {
 
   const saveHabit = async (habitData: Partial<Habit>) => {
     if (!user) return;
+
+    if (user.uid === 'local-demo-user') {
+      const newHabit = { ...habitData, id: 'demo-' + Date.now(), userId: user.uid, createdAt: Date.now() } as Habit;
+      setHabits(prev => [newHabit, ...prev]);
+      setShowAddForm(false);
+      setActiveTab('home');
+      return;
+    }
+
     try {
       await addDoc(collection(db, 'habits'), {
         ...habitData,
