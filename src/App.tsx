@@ -340,12 +340,18 @@ export default function App() {
       await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
       console.error("Auth error", error);
-      if (error.code === 'auth/unauthorized-domain') {
-        setAppError("Login domain unauthorized. Please use the production URL.");
-      } else if (error.code === 'auth/admin-restricted-operation') {
-        setAppError("Authentication service is being initialized. Please try again.");
-      } else {
-        setAppError(`Login failed: ${error.message}`);
+      // Fallback to anonymous login if popup is blocked or fails (e.g. in iframe)
+      try {
+        console.log("Falling back to anonymous login...");
+        await signInAnonymously(auth);
+      } catch (anonError: any) {
+        if (error.code === 'auth/unauthorized-domain') {
+          setAppError("Login domain unauthorized. Please use the production URL.");
+        } else if (error.code === 'auth/admin-restricted-operation') {
+          setAppError("Authentication service is being initialized. Please try again.");
+        } else {
+          setAppError(`Login failed: ${error.message}`);
+        }
       }
     }
   };
@@ -777,7 +783,36 @@ INSTRUCTIONS:
   }
 
   if (!user) {
-    return <LandingPage onAuth={handleGoogleLogin} />;
+    return (
+      <>
+        <AnimatePresence>
+          {appError && (
+            <div className="fixed top-4 left-4 right-4 z-[250]">
+              <motion.div 
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white border border-red-100 text-red-600 px-5 py-4 rounded-3xl shadow-2xl shadow-red-500/10 flex justify-between items-center backdrop-blur-xl bg-white/90"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-red-50 rounded-xl flex items-center justify-center text-red-500">
+                    <Info size={18} />
+                  </div>
+                  <span className="text-sm font-bold tracking-tight">{appError}</span>
+                </div>
+                <button 
+                  onClick={() => setAppError(null)}
+                  className="p-2 hover:bg-red-50 rounded-full transition-colors text-red-400"
+                >
+                  <Plus size={20} className="rotate-45" />
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+        <LandingPage onAuth={handleGoogleLogin} />
+      </>
+    );
   }
 
   return (

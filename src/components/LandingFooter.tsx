@@ -1,10 +1,20 @@
 import { Database, Github, Twitter, Linkedin } from 'lucide-react';
+import { LegalDocType } from './LegalModal';
 
 interface LandingFooterProps {
   onLaunchApp: () => void;
+  onOpenLegal: (type: LegalDocType) => void;
 }
 
-export function LandingFooter({ onLaunchApp }: LandingFooterProps) {
+export function LandingFooter({ onLaunchApp, onOpenLegal }: LandingFooterProps) {
+  const handleScrollTo = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <footer className="bg-gray-900 text-gray-300 py-16">
       <div className="container mx-auto px-4">
@@ -30,20 +40,20 @@ export function LandingFooter({ onLaunchApp }: LandingFooterProps) {
           {/* Links Col 1 */}
           <div className="space-y-4">
             <h4 className="text-white font-bold uppercase tracking-widest text-xs">Product</h4>
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-2 text-sm flex flex-col items-start">
               <li><button onClick={onLaunchApp} className="hover:text-white transition-colors text-left">Launch App</button></li>
-              <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
-              <li><a href="#faq" className="hover:text-white transition-colors">FAQs</a></li>
+              <li><a href="#features" onClick={(e) => handleScrollTo(e, 'features')} className="hover:text-white transition-colors">Features</a></li>
+              <li><a href="#faq" onClick={(e) => handleScrollTo(e, 'faq')} className="hover:text-white transition-colors">FAQs</a></li>
             </ul>
           </div>
 
           {/* Links Col 2 */}
           <div className="space-y-4">
             <h4 className="text-white font-bold uppercase tracking-widest text-xs">Legal</h4>
-            <ul className="space-y-2 text-sm">
-              <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Cookie Policy</a></li>
+            <ul className="space-y-2 text-sm flex flex-col items-start">
+              <li><button onClick={() => onOpenLegal('privacy')} className="hover:text-white transition-colors text-left">Privacy Policy</button></li>
+              <li><button onClick={() => onOpenLegal('terms')} className="hover:text-white transition-colors text-left">Terms of Service</button></li>
+              <li><button onClick={() => onOpenLegal('cookies')} className="hover:text-white transition-colors text-left">Cookie Policy</button></li>
             </ul>
           </div>
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Sparkles, User, History, MessageCircle, Plus, Trash2, X, Lightbulb } from 'lucide-react';
+import { Send, Sparkles, User, History, MessageCircle, Plus, Trash2, X, Lightbulb, Brain, Zap } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { Habit, HabitLog, UserProfile } from '@/types';
 import { subDays } from 'date-fns';

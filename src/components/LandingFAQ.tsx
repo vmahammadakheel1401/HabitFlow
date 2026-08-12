@@ -80,7 +80,13 @@ export function LandingFAQ() {
 
           <div className="mt-16 p-8 rounded-[32px] bg-primary/5 border border-primary/10 text-center">
             <p className="text-gray-900 font-bold mb-2">Still have questions?</p>
-            <p className="text-sm text-gray-600">Our support team is always here to help you master your daily routine.</p>
+            <p className="text-sm text-gray-600 mb-6">Our support team is always here to help you master your daily routine.</p>
+            <a 
+              href="mailto:support@habitflow.app" 
+              className="inline-block bg-white border border-gray-200 px-6 py-3 rounded-xl font-bold text-gray-900 hover:border-primary hover:text-primary transition-all shadow-sm"
+            >
+              Contact Support
+            </a>
           </div>
         </div>
       </div>

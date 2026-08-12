@@ -1,6 +1,10 @@
 import { motion } from 'motion/react';
 
-export function LandingContent() {
+interface LandingContentProps {
+  onStartTracking: () => void;
+}
+
+export function LandingContent({ onStartTracking }: LandingContentProps) {
   return (
     <section className="py-24 bg-gray-50 border-t border-gray-100">
       <div className="container mx-auto px-4">
@@ -74,7 +78,10 @@ export function LandingContent() {
           {/* Final Call to Action Link */}
           <div className="pt-12 text-center">
             <p className="text-sm font-bold text-primary uppercase tracking-widest mb-4">Ready to upgrade your routine?</p>
-            <button className="text-lg font-bold text-gray-900 hover:text-primary transition-colors flex items-center justify-center gap-2 mx-auto">
+            <button 
+              onClick={onStartTracking}
+              className="text-lg font-bold text-gray-900 hover:text-primary transition-colors flex items-center justify-center gap-2 mx-auto"
+            >
               Start your AI-powered journey today
               <span className="text-xl">→</span>
             </button>
