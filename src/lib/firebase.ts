@@ -2,16 +2,16 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 const firebaseConfig = {
-  apiKey: "AIzaSyD6zKhAQGfnMDayzk0MP-o3Bh-ULonjK-U",
-  authDomain: "material-pure-habits.firebaseapp.com",
-  projectId: "material-pure-habits",
-  storageBucket: "material-pure-habits.appspot.com",
-  messagingSenderId: "347566039767",
-  appId: "1:347566039767:web:646b7a6d210a15173d8692"
+  apiKey: "AIzaSyD5wAj8s1Qa-7pM38dXWqDIAkSvx2mi-gc",
+  authDomain: "gen-lang-client-0475076286.firebaseapp.com",
+  projectId: "gen-lang-client-0475076286",
+  storageBucket: "gen-lang-client-0475076286.firebasestorage.app",
+  messagingSenderId: "459077580378",
+  appId: "1:459077580378:web:a0424f476b926b13e70a63"
 };
 
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app);
+export const db = getFirestore(app, "ai-studio-materialpure-9edc7e14-8756-40f9-bdb5-a20f2bb78de1");
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();

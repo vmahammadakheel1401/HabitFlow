@@ -15,11 +15,18 @@ export async function generateGeminiContent(prompt: string): Promise<string> {
       if (response.ok) {
         const data = await response.json();
         if (data.text) return data.text;
+      } else {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || "Something went wrong with the AI Coach. Please try again.");
       }
-    } catch (fallbackError) {
-      console.error("Gemini Error:", fallbackError);
+    } catch (fallbackError: any) {
+      console.error("Gemini fallback Error safely caught");
+      if (fallbackError?.message?.includes("AI Coach")) {
+        throw fallbackError;
+      }
+      throw new Error("Something went wrong with the AI Coach. Please try again.");
     }
-    throw new Error('VITE_GEMINI_API_KEY is missing');
+    throw new Error("Something went wrong with the AI Coach. Please try again.");
   }
 
   try {
@@ -34,9 +41,13 @@ export async function generateGeminiContent(prompt: string): Promise<string> {
     }
 
     return response.text;
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    throw error;
+  } catch (error: any) {
+    console.error("Gemini Error safely caught");
+    const isQuota = error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED');
+    if (isQuota) {
+      throw new Error("AI Coach is temporarily unavailable. Please try again later.");
+    }
+    throw new Error("Something went wrong with the AI Coach. Please try again.");
   }
 }
 // Final Sync: 2026-08-12T01:48:00

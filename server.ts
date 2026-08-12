@@ -42,8 +42,11 @@ async function startServer() {
       
       res.json({ text: response.text });
     } catch (error: any) {
-      console.error("AI Analysis Error:", error);
-      res.status(500).json({ error: error.message });
+      console.error("AI Analysis Error handled safely");
+      if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
+        return res.status(429).json({ error: "AI Coach is temporarily unavailable. Please try again later." });
+      }
+      res.status(500).json({ error: "Something went wrong with the AI Coach. Please try again." });
     }
   });
 

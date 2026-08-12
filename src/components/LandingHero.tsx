@@ -35,7 +35,7 @@ export function LandingHero({ onGetStarted, onTryDemo }: LandingHeroProps) {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-5xl lg:text-7xl font-extrabold tracking-tight text-gray-900 leading-[1.1]"
           >
-            Build Better Habits Effortlessly with the Best <span className="text-primary">AI Habit Tracker</span>
+            AI Habit Tracker & <span className="text-primary">Daily Routine Builder</span>
           </motion.h1>
 
           {/* Subheadline */}
@@ -45,7 +45,7 @@ export function LandingHero({ onGetStarted, onTryDemo }: LandingHeroProps) {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-xl lg:text-2xl text-gray-600 leading-relaxed max-w-2xl mx-auto font-medium"
           >
-            Master your <span className="text-gray-900 font-bold underline decoration-accent/30">Smart Daily Routine Builder</span>. Our AI insights analyze your patterns to keep you consistent, productive, and focused on personal growth.
+            Master your daily routines with personalized AI coaching. Our intelligent insights analyze your patterns to help you build lasting habits effortlessly.
           </motion.h2>
 
           {/* CTAs */}
@@ -59,15 +59,14 @@ export function LandingHero({ onGetStarted, onTryDemo }: LandingHeroProps) {
               onClick={onGetStarted}
               className="w-full sm:w-auto px-8 py-5 bg-primary text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl shadow-primary/25 hover:scale-[1.02] active:scale-95 transition-all group"
             >
-              Get Started for Free
+              Start Tracking Free
               <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
             <button
               onClick={onTryDemo}
               className="w-full sm:w-auto px-8 py-5 bg-white text-gray-700 border-2 border-gray-100 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 hover:bg-gray-50 active:scale-95 transition-all"
             >
-              <Play size={20} className="fill-gray-400 text-gray-400" />
-              Try Live Demo
+              View FAQs
             </button>
           </motion.div>
 

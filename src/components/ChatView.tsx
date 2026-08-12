@@ -70,6 +70,8 @@ export function ChatView({ habits = [], logs = [], userProfile }: ChatViewProps)
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [lastMessage, setLastMessage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const currentSession = sessions.find(s => s.id === activeSessionId) || sessions[0] || {
@@ -221,9 +223,17 @@ ${habitDetails.join('\n')}
     if (!textToSend || isLoading) return;
 
     if (!messageText) setInput('');
-    const updatedMessages = [...messages, { role: 'user' as const, content: textToSend }];
-    updateCurrentMessages(updatedMessages);
+    
+    // Only add to messages if we're not retrying (the user message is already at the end if retrying)
+    let updatedMessages = [...messages];
+    if (messages[messages.length - 1]?.content !== textToSend || messages[messages.length - 1]?.role !== 'user') {
+      updatedMessages = [...messages, { role: 'user' as const, content: textToSend }];
+      updateCurrentMessages(updatedMessages);
+    }
+    
+    setLastMessage(textToSend);
     setIsLoading(true);
+    setChatError(null);
 
     const habitContext = buildHabitContext();
 
@@ -244,11 +254,8 @@ Instructions:
       const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: responseText }];
       updateCurrentMessages(finalMessages);
     } catch (error: any) {
-      console.error("Gemini Error:", error);
-      const apiErrorMessage = error?.message || "Unknown API Error";
-      const errorMessage = `AI Connection Error: ${apiErrorMessage}. Please check your Vercel logs and VITE_GEMINI_API_KEY.`;
-      const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: errorMessage }];
-      updateCurrentMessages(finalMessages);
+      console.error("Chat error handled gracefully");
+      setChatError(error.message || "Something went wrong with the AI Coach. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -377,6 +384,30 @@ Instructions:
               <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]"></span>
               <span className="w-2 h-2 rounded-full bg-primary animate-bounce"></span>
               <span className="text-xs text-gray-400 font-medium ml-2">Coach is thinking...</span>
+            </div>
+          </motion.div>
+        )}
+
+        {chatError && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-center my-4"
+          >
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-5 text-center max-w-sm w-full shadow-sm">
+              <div className="w-10 h-10 bg-red-100 text-red-500 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <Brain size={20} />
+              </div>
+              <p className="text-red-800 text-sm font-medium leading-relaxed mb-4">
+                {chatError}
+              </p>
+              <button
+                onClick={() => lastMessage && handleSend(lastMessage)}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl transition-all active:scale-95 shadow-md shadow-red-500/20"
+              >
+                <Zap size={16} />
+                Try Again
+              </button>
             </div>
           </motion.div>
         )}

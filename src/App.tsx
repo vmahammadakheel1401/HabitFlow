@@ -25,7 +25,7 @@ import { HabitDetail } from '@/components/HabitDetail';
 import { WeeklySummary } from '@/components/WeeklySummary';
 import { ActivityHeatmapAndBadges } from '@/components/ActivityHeatmapAndBadges';
 import { ChatView } from '@/components/ChatView';
-import { LandingHero } from '@/components/LandingHero';
+import { LandingPage } from '@/components/LandingPage';
 import { getTodayStr, cn } from '@/lib/utils';
 import { generateGeminiContent } from '@/services/gemini';
 import { Plus, User as UserIcon, Bell, Moon, Database, Info, LogIn, LogOut, Trophy, Award, Zap, Brain, Heart, Activity, Crown, Star } from 'lucide-react';
@@ -549,9 +549,8 @@ INSTRUCTIONS:
       const responseText = await generateGeminiContent(prompt);
       setAiAdvice(prev => ({ ...prev, [habit.id]: responseText }));
     } catch (error: any) {
-      console.error('AI Analysis failed:', error);
-      const apiErrorMessage = error?.message || "Unknown API Error";
-      setAppError(`AI Connection Error: ${apiErrorMessage}. Please check your connection.`);
+      console.error('AI Analysis handled gracefully');
+      setAppError(error?.message || "Something went wrong with the AI Coach. Please try again.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -778,27 +777,7 @@ INSTRUCTIONS:
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen bg-white">
-        <LandingHero 
-          onGetStarted={handleGoogleLogin} 
-          onTryDemo={() => {
-            // Demo logic or scroll to section
-            handleGoogleLogin();
-          }}
-        />
-        
-        {/* Secondary Info / Footer for Login */}
-        <div className="bg-gray-50 py-12 border-t border-gray-100">
-          <div className="container mx-auto px-4 text-center">
-            <p className="text-sm text-gray-500 max-w-xs mx-auto">
-              By joining Habit Flow, you agree to our terms of service. 
-              Guest mode is available via Anonymous Authentication.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LandingPage onAuth={handleGoogleLogin} />;
   }
 
   return (
