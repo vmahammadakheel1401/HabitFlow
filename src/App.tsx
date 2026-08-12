@@ -25,6 +25,7 @@ import { HabitDetail } from '@/components/HabitDetail';
 import { WeeklySummary } from '@/components/WeeklySummary';
 import { ActivityHeatmapAndBadges } from '@/components/ActivityHeatmapAndBadges';
 import { ChatView } from '@/components/ChatView';
+import { LandingHero } from '@/components/LandingHero';
 import { getTodayStr, cn } from '@/lib/utils';
 import { generateGeminiContent } from '@/services/gemini';
 import { Plus, User as UserIcon, Bell, Moon, Database, Info, LogIn, LogOut, Trophy, Award, Zap, Brain, Heart, Activity, Crown, Star } from 'lucide-react';
@@ -778,26 +779,21 @@ INSTRUCTIONS:
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-sm w-full space-y-8">
-          <div className="w-20 h-20 bg-primary-container text-primary rounded-[28px] flex items-center justify-center mx-auto shadow-sm">
-            <Database size={40} />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight">Material Pure</h1>
-            <p className="text-on-surface-variant">Your refined journey to better habits starts here.</p>
-          </div>
-          
-          <div className="space-y-3">
-            <button 
-              onClick={handleGoogleLogin}
-              className="w-full bg-primary text-on-primary py-4 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-primary/20 active:scale-95 transition-all"
-            >
-              <LogIn size={20} />
-              Continue with Google
-            </button>
-            <p className="text-xs text-outline px-4">
-              To use guest mode, please ensure "Anonymous Auth" is enabled in your Firebase Console.
+      <div className="min-h-screen bg-white">
+        <LandingHero 
+          onGetStarted={handleGoogleLogin} 
+          onTryDemo={() => {
+            // Demo logic or scroll to section
+            handleGoogleLogin();
+          }}
+        />
+        
+        {/* Secondary Info / Footer for Login */}
+        <div className="bg-gray-50 py-12 border-t border-gray-100">
+          <div className="container mx-auto px-4 text-center">
+            <p className="text-sm text-gray-500 max-w-xs mx-auto">
+              By joining Habit Flow, you agree to our terms of service. 
+              Guest mode is available via Anonymous Authentication.
             </p>
           </div>
         </div>
