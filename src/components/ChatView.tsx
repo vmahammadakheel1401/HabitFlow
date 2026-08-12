@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Sparkles, User, Bot, History, MessageCircle } from 'lucide-react';
+import { Send, Sparkles, User, Bot, History, MessageCircle, Plus, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -8,30 +8,64 @@ interface Message {
   content: string;
 }
 
-interface ChatHistoryItem {
+interface ChatSession {
   id: string;
-  lastMessage: string;
-  timestamp: string;
+  title: string;
+  messages: Message[];
+  updatedAt: number;
 }
 
 interface ChatViewProps {
 }
 
+const STORAGE_KEY = 'material_pure_chat_sessions';
+
 export function ChatView({ }: ChatViewProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: "Hello! I'm your AI Habit Coach. How can I help you build better routines and achieve your goals today?" }
-  ]);
+  const [sessions, setSessions] = useState<ChatSession[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("Error loading chat sessions:", e);
+    }
+    // Default initial session
+    return [{
+      id: Date.now().toString(),
+      title: "New Habit Coach Chat",
+      messages: [
+        { role: 'assistant', content: "Hello! I'm your AI Habit Coach. How can I help you build better routines and achieve your goals today?" }
+      ],
+      updatedAt: Date.now()
+    }];
+  });
+
+  const [activeSessionId, setActiveSessionId] = useState<string>(() => {
+    return sessions[0]?.id || Date.now().toString();
+  });
+
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Mock history
-  const history: ChatHistoryItem[] = [
-    { id: '1', lastMessage: "How can I improve my focus?", timestamp: "2 days ago" },
-    { id: '2', lastMessage: "Consistency tips for morning habits", timestamp: "5 days ago" },
-    { id: '3', lastMessage: "Breaking bad habits effectively", timestamp: "1 week ago" },
-  ];
+  const currentSession = sessions.find(s => s.id === activeSessionId) || sessions[0] || {
+    id: Date.now().toString(),
+    title: "New Habit Coach Chat",
+    messages: [{ role: 'assistant', content: "Hello! I'm your AI Habit Coach. How can I help you build better routines and achieve your goals today?" }],
+    updatedAt: Date.now()
+  };
+
+  const messages = currentSession.messages;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    } catch (e) {
+      console.error("Error saving chat sessions:", e);
+    }
+  }, [sessions]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -39,12 +73,71 @@ export function ChatView({ }: ChatViewProps) {
     }
   }, [messages, isLoading, showHistory]);
 
+  const updateCurrentMessages = (newMessages: Message[]) => {
+    setSessions(prev => {
+      const existing = prev.find(s => s.id === activeSessionId);
+      const title = newMessages.length > 1 && newMessages[1].role === 'user' 
+        ? (newMessages[1].content.length > 30 ? newMessages[1].content.substring(0, 30) + '...' : newMessages[1].content)
+        : existing?.title || "Habit Coach Chat";
+
+      if (existing) {
+        return prev.map(s => s.id === activeSessionId ? { ...s, messages: newMessages, title, updatedAt: Date.now() } : s);
+      } else {
+        return [{
+          id: activeSessionId,
+          title,
+          messages: newMessages,
+          updatedAt: Date.now()
+        }, ...prev];
+      }
+    });
+  };
+
+  const handleNewChat = () => {
+    const newId = Date.now().toString();
+    const newSession: ChatSession = {
+      id: newId,
+      title: "New Conversation",
+      messages: [
+        { role: 'assistant', content: "Hello! I'm your AI Habit Coach. What habit would you like to build or discuss today?" }
+      ],
+      updatedAt: Date.now()
+    };
+    setSessions(prev => [newSession, ...prev]);
+    setActiveSessionId(newId);
+    setShowHistory(false);
+  };
+
+  const handleDeleteSession = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setSessions(prev => {
+      const filtered = prev.filter(s => s.id !== id);
+      if (filtered.length === 0) {
+        const freshId = Date.now().toString();
+        return [{
+          id: freshId,
+          title: "New Habit Coach Chat",
+          messages: [{ role: 'assistant', content: "Hello! I'm your AI Habit Coach. How can I help you build better routines and achieve your goals today?" }],
+          updatedAt: Date.now()
+        }];
+      }
+      return filtered;
+    });
+    if (activeSessionId === id) {
+      const remaining = sessions.filter(s => s.id !== id);
+      if (remaining.length > 0) {
+        setActiveSessionId(remaining[0].id);
+      }
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    const updatedMessages = [...messages, { role: 'user' as const, content: userMessage }];
+    updateCurrentMessages(updatedMessages);
     setIsLoading(true);
 
     try {
@@ -56,9 +149,11 @@ export function ChatView({ }: ChatViewProps) {
         }),
       });
       const data = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.text }]);
+      const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: data.text }];
+      updateCurrentMessages(finalMessages);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I'm having trouble connecting right now. Please try again shortly." }]);
+      const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: "Sorry, I'm having trouble connecting right now. Please try again shortly." }];
+      updateCurrentMessages(finalMessages);
     } finally {
       setIsLoading(false);
     }
@@ -102,40 +197,6 @@ export function ChatView({ }: ChatViewProps) {
     });
   };
 
-  if (showHistory) {
-    return (
-      <div className="flex flex-col h-full bg-background animate-in fade-in slide-in-from-right-4 duration-300">
-        <header className="h-nav-height px-6 flex items-center border-b border-black/5 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-          <button 
-            onClick={() => setShowHistory(false)}
-            className="p-2 -ml-2 rounded-full hover:bg-primary/5 text-primary transition-colors"
-          >
-            <History className="rotate-180" size={20} />
-          </button>
-          <h1 className="flex-1 text-center font-bold text-gray-900 tracking-tight text-base">Chat History</h1>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-6 space-y-4 pb-[120px]">
-          {history.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setShowHistory(false)}
-              className="w-full bg-white rounded-2xl p-4 text-left border border-black/5 shadow-sm hover:shadow-md transition-all flex items-start gap-4 group"
-            >
-              <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
-                <MessageCircle size={20} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900 truncate text-sm">{item.lastMessage}</p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{item.timestamp}</p>
-              </div>
-            </button>
-          ))}
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full bg-background relative">
       <header className="h-nav-height px-6 flex items-center border-b border-black/5 bg-white/80 backdrop-blur-md sticky top-0 z-10">
@@ -148,10 +209,13 @@ export function ChatView({ }: ChatViewProps) {
         </div>
         <button 
           onClick={() => setShowHistory(true)}
-          className="p-2 -mr-2 rounded-full hover:bg-primary/5 text-primary transition-colors"
+          className="p-2 -mr-2 rounded-full hover:bg-primary/5 text-primary transition-colors relative"
           title="Chat History"
         >
           <History size={20} />
+          {sessions.length > 0 && (
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
+          )}
         </button>
       </header>
 
@@ -243,7 +307,109 @@ export function ChatView({ }: ChatViewProps) {
           </button>
         </div>
       </div>
+
+      {/* History Slide-Over Drawer / Modal */}
+      <AnimatePresence>
+        {showHistory && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowHistory(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+
+            {/* Drawer */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+              className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col z-10"
+            >
+              {/* Drawer Header */}
+              <div className="p-6 border-b border-black/5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <History size={20} />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-gray-900 text-base">Chat History</h2>
+                    <p className="text-xs text-gray-400 font-medium">{sessions.length} saved conversation{sessions.length === 1 ? '' : 's'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowHistory(false)}
+                  className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* New Chat Button */}
+              <div className="p-4 border-b border-black/5 bg-gray-50/50">
+                <button
+                  onClick={handleNewChat}
+                  className="w-full bg-primary text-white py-3.5 px-4 rounded-2xl font-bold text-sm shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:bg-primary/95 transition-all active:scale-95"
+                >
+                  <Plus size={18} />
+                  <span>+ New Chat</span>
+                </button>
+              </div>
+
+              {/* Sessions List */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {sessions.map((session) => {
+                  const isActive = session.id === activeSessionId;
+                  const dateStr = new Date(session.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                  
+                  return (
+                    <div
+                      key={session.id}
+                      onClick={() => {
+                        setActiveSessionId(session.id);
+                        setShowHistory(false);
+                      }}
+                      className={cn(
+                        "w-full rounded-2xl p-4 text-left border transition-all flex items-start gap-4 group cursor-pointer relative overflow-hidden",
+                        isActive 
+                          ? "bg-primary/[0.04] border-primary/30 shadow-sm" 
+                          : "bg-white border-black/5 hover:border-black/10 hover:shadow-sm"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                        isActive ? "bg-primary text-white shadow-md shadow-primary/20" : "bg-primary/5 text-primary group-hover:bg-primary/10"
+                      )}>
+                        <MessageCircle size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0 pr-6">
+                        <p className={cn("font-bold text-sm truncate", isActive ? "text-primary" : "text-gray-900")}>
+                          {session.title}
+                        </p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                          {dateStr}
+                        </p>
+                      </div>
+                      <button
+                        onClick={(e) => handleDeleteSession(e, session.id)}
+                        className="absolute right-3 top-3 p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Delete chat"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
 
