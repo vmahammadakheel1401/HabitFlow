@@ -37,6 +37,35 @@ export function HabitDetail({
   ).length;
   const remainingSkips = 6 - monthlySkips;
 
+  const renderFormattedContent = (content: string) => {
+    if (!content) return null;
+    const lines = content.split('\n');
+    return lines.map((line, idx) => {
+      const trimmed = line.trim();
+      const formatBoldText = (text: string) => {
+        const parts = text.split(/\*\*(.*?)\*\*/g);
+        return parts.map((part, i) => 
+          i % 2 === 1 ? <strong key={i} className="font-bold text-white">{part}</strong> : part
+        );
+      };
+
+      if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        const text = trimmed.substring(2);
+        return (
+          <div key={idx} className="flex items-start gap-2.5 my-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent mt-2 shrink-0 shadow-sm" />
+            <span className="flex-1 leading-relaxed text-white/90">{formatBoldText(text)}</span>
+          </div>
+        );
+      }
+      return (
+        <p key={idx} className={trimmed === '' ? 'h-2' : 'my-1.5 leading-relaxed text-white/90'}>
+          {formatBoldText(line)}
+        </p>
+      );
+    });
+  };
+
   return (
     <div className="fixed inset-0 bg-background z-[110] flex flex-col overflow-y-auto">
       <header className="h-nav-height px-4 flex items-center sticky top-0 bg-background/80 backdrop-blur-md z-10">
@@ -112,7 +141,13 @@ export function HabitDetail({
             <h3 className="font-bold text-white">Coach Insights</h3>
           </div>
           <p className="text-white/80 text-sm leading-relaxed relative z-10">
-            {aiAdvice || "Ready for your personal growth strategy? Let Gemini analyze your progress."}
+            {aiAdvice ? (
+              <div className="space-y-1">
+                {renderFormattedContent(aiAdvice)}
+              </div>
+            ) : (
+              "Ready for your personal growth strategy? Get tailored, actionable feedback on this habit."
+            )}
           </p>
           <button 
             onClick={onAnalyze}

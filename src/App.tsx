@@ -26,6 +26,7 @@ import { WeeklySummary } from '@/components/WeeklySummary';
 import { ActivityHeatmapAndBadges } from '@/components/ActivityHeatmapAndBadges';
 import { ChatView } from '@/components/ChatView';
 import { getTodayStr, cn } from '@/lib/utils';
+import { generateGeminiContent } from '@/services/gemini';
 import { Plus, User as UserIcon, Bell, Moon, Database, Info, LogIn, LogOut, Trophy, Award, Zap, Brain, Heart, Activity, Crown, Star } from 'lucide-react';
 import { format, isSunday, startOfWeek, subDays, addDays } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -499,23 +500,57 @@ export default function App() {
     setIsAnalyzing(true);
     setAppError(null);
     try {
-      const response = await fetch('/api/ai/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt: `Give me 3 short, practical tips for maintaining a habit called "${habit.name}". The category is ${habit.type}. Keep it encouraging and under 300 characters.` 
-        }),
-      });
+      const habitLogs = logs.filter(l => l.habitId === habit.id);
       
-      if (!response.ok) {
-        throw new Error("AI analysis service failed");
+      // Calculate Streak
+      let streak = 0;
+      let checkDate = new Date();
+      for (let i = 0; i < 365; i++) {
+        const dateStr = format(checkDate, 'yyyy-MM-dd');
+        const log = habitLogs.find(l => l.date === dateStr);
+        if (log && (log.status === 'completed' || log.status === 'skipped')) {
+          streak++;
+          checkDate = subDays(checkDate, 1);
+        } else if (dateStr === today) {
+          checkDate = subDays(checkDate, 1);
+          continue;
+        } else {
+          break;
+        }
       }
-      
-      const data = await response.json();
-      setAiAdvice(prev => ({ ...prev, [habit.id]: data.text }));
-    } catch (error) {
+
+      // Calculate 30-day history & score
+      const last30Days = Array.from({ length: 30 }, (_, i) => {
+        const d = subDays(new Date(), i);
+        const dateStr = format(d, 'yyyy-MM-dd');
+        const log = habitLogs.find(l => l.date === dateStr);
+        return { date: dateStr, status: log?.status || 'none' };
+      }).reverse();
+
+      const completedCount = last30Days.filter(l => l.status === 'completed' || l.status === 'skipped').length;
+      const score = Math.round((completedCount / 30) * 100);
+
+      const prompt = `You are a supportive, insightful, and motivating AI Habit Coach.
+Analyze the user's progress for this specific habit:
+
+HABIT DETAILS:
+- Name: "${habit.name}"
+- Current Streak: ${streak} days
+- 30-Day Consistency Score: ${score}%
+- Recent Pattern (Last 30 days): ${last30Days.map(d => d.status === 'completed' ? '✅' : d.status === 'skipped' ? '⏭️' : '⚪').join('')}
+
+INSTRUCTIONS:
+- Provide exactly 3 short, practical, and tailored tips to help the user maintain or improve this habit.
+- Reference their current streak and performance pattern directly.
+- Format as a clean bulleted list using "- ".
+- Keep the response concise (under 350 characters total).`;
+
+      const responseText = await generateGeminiContent(prompt);
+      setAiAdvice(prev => ({ ...prev, [habit.id]: responseText }));
+    } catch (error: any) {
       console.error('AI Analysis failed:', error);
-      setAppError("AI Coach is temporarily unavailable.");
+      const apiErrorMessage = error?.message || "Unknown API Error";
+      setAppError(`AI Connection Error: ${apiErrorMessage}. Please check your connection.`);
     } finally {
       setIsAnalyzing(false);
     }
