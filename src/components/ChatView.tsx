@@ -221,9 +221,9 @@ Instructions:
       const responseText = await generateGeminiContent(fullPrompt);
       const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: responseText }];
       updateCurrentMessages(finalMessages);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Gemini Error:", error);
-      const errorMessage = "AI Connection Error: Please verify that VITE_GEMINI_API_KEY is set in Vercel and trigger a fresh redeploy.";
+      const errorMessage = `AI Connection Error: ${error?.message || "Unknown error"}. Check VITE_GEMINI_API_KEY.`;
       const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: errorMessage }];
       updateCurrentMessages(finalMessages);
     } finally {

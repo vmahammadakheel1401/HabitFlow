@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 
 export async function generateGeminiContent(prompt: string): Promise<string> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || 'AQ.Ab8RN6KODQU6Ewj-AMi4htfofqr8SEcEp2kMSeVXJ69cwq_78w';
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || 'AQ.Ab8RN6KgcH9RqipOUzC3JG4k7dqNvhG8cz7B4eYQ8qBKMpBqYw';
 
   if (!apiKey) {
     // Check fallback server endpoint if available

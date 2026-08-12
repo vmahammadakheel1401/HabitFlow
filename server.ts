@@ -21,7 +21,7 @@ async function startServer() {
   app.post("/api/ai/analyze", async (req, res) => {
     try {
       const { prompt } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || 'AQ.Ab8RN6KODQU6Ewj-AMi4htfofqr8SEcEp2kMSeVXJ69cwq_78w';
+      const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || 'AQ.Ab8RN6KgcH9RqipOUzC3JG4k7dqNvhG8cz7B4eYQ8qBKMpBqYw';
       if (!apiKey) {
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
       }
@@ -36,7 +36,7 @@ async function startServer() {
       });
       
       const response = await ai.models.generateContent({ 
-        model: "gemini-3.6-flash",
+        model: "gemini-2.5-flash",
         contents: prompt
       });
       
@@ -69,3 +69,4 @@ async function startServer() {
 
 startServer();
 // Trigger GitHub export change
+// Trigger GitHub export fix 2
