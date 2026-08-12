@@ -41,6 +41,7 @@ export interface HabitLog {
   date: string; // YYYY-MM-DD
   status: 'completed' | 'skipped' | 'failed' | 'none';
   value?: number;
+  timestamp?: number;
   userId: string;
 }
 

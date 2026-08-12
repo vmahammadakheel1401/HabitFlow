@@ -241,13 +241,17 @@ export default function App() {
 
       if (existingLog) {
         const newStatus = existingLog.status === 'completed' ? 'none' : 'completed';
-        await updateDoc(doc(db, 'logs', logId), { status: newStatus });
+        await updateDoc(doc(db, 'logs', logId), { 
+          status: newStatus,
+          timestamp: newStatus === 'completed' ? Date.now() : (existingLog.timestamp || null)
+        });
       } else {
         await setDoc(doc(db, 'logs', logId), {
           id: logId,
           habitId,
           date: today,
           status: 'completed',
+          timestamp: Date.now(),
           userId: user.uid
         });
       }
@@ -423,17 +427,61 @@ export default function App() {
 
   const insights = useMemo(() => {
     const last7Days = Array.from({ length: 7 }, (_, i) => format(subDays(new Date(), i), 'yyyy-MM-dd'));
-    const consistentDays = last7Days.filter(date => 
-      logs.some(l => l.date === date && (l.status === 'completed' || l.status === 'skipped'))
-    ).length;
-    const weeklyConsistency = Math.round((consistentDays / 7) * 100);
+    
+    let totalScheduled = 0;
+    let totalCompleted = 0;
 
-    const completionCounts = habits.reduce((acc, habit) => {
-      const habitCompletions = logs.filter(l => l.habitId === habit.id && (l.status === 'completed' || l.status === 'skipped')).length;
-      acc[habit.timeOfDay] = (acc[habit.timeOfDay] || 0) + habitCompletions;
-      return acc;
-    }, {} as Record<string, number>);
-    const peakTime = Object.entries(completionCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+    last7Days.forEach(dayDate => {
+      const activeHabitsOnDay = habits.filter(h => {
+        const createdDateStr = format(new Date(h.createdAt || Date.now()), 'yyyy-MM-dd');
+        return createdDateStr <= dayDate;
+      });
+      totalScheduled += activeHabitsOnDay.length;
+
+      const dayLogs = logs.filter(l => l.date === dayDate && (l.status === 'completed' || l.status === 'skipped'));
+      const validCompletions = dayLogs.filter(l => activeHabitsOnDay.some(h => h.id === l.habitId)).length;
+      totalCompleted += validCompletions;
+    });
+
+    const weeklyConsistency = totalScheduled > 0 ? Math.round((totalCompleted / totalScheduled) * 100) : 0;
+
+    const completedLogs = logs.filter(l => l.status === 'completed');
+    if (completedLogs.length === 0) {
+      return { weeklyConsistency, peakTime: 'No data yet' };
+    }
+
+    const windowCounts: Record<string, number> = {
+      'Morning': 0,
+      'Afternoon': 0,
+      'Evening': 0,
+      'Night': 0
+    };
+
+    completedLogs.forEach(log => {
+      let hour = 12;
+      if (log.timestamp) {
+        hour = new Date(log.timestamp).getHours();
+      } else {
+        const habit = habits.find(h => h.id === log.habitId);
+        if (habit?.timeOfDay === 'Morning') hour = 9;
+        else if (habit?.timeOfDay === 'Afternoon') hour = 14;
+        else if (habit?.timeOfDay === 'Evening') hour = 18;
+        else hour = 12;
+      }
+
+      if (hour >= 5 && hour < 12) {
+        windowCounts['Morning']++;
+      } else if (hour >= 12 && hour < 17) {
+        windowCounts['Afternoon']++;
+      } else if (hour >= 17 && hour < 21) {
+        windowCounts['Evening']++;
+      } else {
+        windowCounts['Night']++;
+      }
+    });
+
+    const bestWindow = Object.entries(windowCounts).sort((a, b) => b[1] - a[1])[0];
+    const peakTime = bestWindow && bestWindow[1] > 0 ? bestWindow[0] : 'No data yet';
 
     return { weeklyConsistency, peakTime };
   }, [habits, logs]);
