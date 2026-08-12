@@ -1,0 +1,45 @@
+{
+  "collections": {
+    "profiles": {
+      "uid": "string",
+      "email": "string",
+      "displayName": "string",
+      "photoURL": "string?",
+      "isPremium": "boolean?",
+      "subscriptionPlan": "string?",
+      "renewalDate": "string?",
+      "hiddenCategoryIds": "string[]?"
+    },
+    "categories": {
+      "id": "string",
+      "name": "string",
+      "color": "string",
+      "userId": "string?",
+      "isCustom": "boolean"
+    },
+    "habits": {
+      "id": "string",
+      "name": "string",
+      "category": "string",
+      "timeOfDay": "string",
+      "icon": "string",
+      "color": "string",
+      "frequency": "string",
+      "type": "string",
+      "target": "string?",
+      "startDate": "string",
+      "reminderTime": "string?",
+      "notes": "string?",
+      "userId": "string",
+      "createdAt": "number"
+    },
+    "logs": {
+      "id": "string",
+      "habitId": "string",
+      "date": "string",
+      "status": "string",
+      "value": "number?",
+      "userId": "string"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Material Pure",
+  "description": "A refined Material 3 habit tracker with Google Keep integration, featuring detailed progress statistics, calendar views, and a natural-technical aesthetic.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
