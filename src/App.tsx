@@ -346,7 +346,7 @@ export default function App() {
         await signInAnonymously(auth);
       } catch (anonError: any) {
         if (error.code === 'auth/unauthorized-domain') {
-          setAppError("Login domain unauthorized. Please use the production URL.");
+          setAppError(`Unregistered Domain: You must add this URL to the Firebase Console -> Authentication -> Settings -> Authorized Domains. Error: ${error.message}`);
         } else if (error.code === 'auth/admin-restricted-operation') {
           setAppError("Authentication service is being initialized. Please try again.");
         } else {
