@@ -36,7 +36,7 @@ async function startServer() {
       });
       
       const response = await ai.models.generateContent({ 
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt
       });
       
@@ -70,3 +70,4 @@ async function startServer() {
 startServer();
 // Trigger GitHub export change
 // Trigger GitHub export fix 2
+// Upgrade to gemini-3.6-flash
