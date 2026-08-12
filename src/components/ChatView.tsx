@@ -4,6 +4,7 @@ import { Send, Sparkles, User, History, MessageCircle, Plus, Trash2, X, Lightbul
 import { cn, formatDate } from '@/lib/utils';
 import { Habit, HabitLog, UserProfile } from '@/types';
 import { subDays } from 'date-fns';
+import { generateGeminiContent } from '@/services/gemini';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -217,18 +218,13 @@ Instructions:
 - Keep responses concise, warm, actionable, and formatted cleanly with bolding or bullet points.`;
 
     try {
-      const response = await fetch('/api/ai/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt: fullPrompt
-        }),
-      });
-      const data = await response.json();
-      const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: data.text || "I've analyzed your habits! Keep up the momentum!" }];
+      const responseText = await generateGeminiContent(fullPrompt);
+      const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: responseText }];
       updateCurrentMessages(finalMessages);
     } catch (error) {
-      const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: "Sorry, I'm having trouble connecting right now. Please try again shortly." }];
+      console.error("Gemini Error:", error);
+      const errorMessage = "AI Connection Error: Please verify that VITE_GEMINI_API_KEY is set in Vercel and trigger a fresh redeploy.";
+      const finalMessages = [...updatedMessages, { role: 'assistant' as const, content: errorMessage }];
       updateCurrentMessages(finalMessages);
     } finally {
       setIsLoading(false);
